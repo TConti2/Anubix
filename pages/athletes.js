@@ -1,16 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getSession, useSession, signOut } from "next-auth/react";
+import { supabase } from "../lib/supabaseClient";
 
 export default function Athletes() {
   const { data: session, status } = useSession();
   const [searchTerm, setSearchTerm] = useState("");
-
-  const [athletes, setAthletes] = useState([
-    { name: "Ava Martinez", age: 9, level: "Beginner", parent: "Maria Martinez", status: "Active" },
-    { name: "Jaxon Reed", age: 11, level: "Intermediate", parent: "Chris Reed", status: "Active" },
-    { name: "Mia Johnson", age: 13, level: "Advanced", parent: "Tara Johnson", status: "Active" },
-  ]);
-
+  const [athletes, setAthletes] = useState([]);
   const [newAthlete, setNewAthlete] = useState({
     name: "",
     age: "",
@@ -26,40 +21,87 @@ export default function Athletes() {
     level: "",
     parent: "",
   });
+useEffect(() => {
+  fetchAthletes();
+}, []);
 
+async function fetchAthletes() {
+  console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+  console.log("Supabase key exists:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+  const { data, error } = await supabase
+    .from("Athletes")
+    .select("*");
+
+  console.log("Athletes data:", data);
+  console.log("Athletes error:", error);
+
+  if (error) {
+    console.error("Error fetching athletes:", error);
+    return;
+  }
+
+  setAthletes(data || []);
+}
+
+
+  
   const filteredAthletes = athletes.filter((athlete) =>
     athlete.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     athlete.level.toLowerCase().includes(searchTerm.toLowerCase()) ||
     athlete.parent.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  function handleAddAthlete(e) {
-    e.preventDefault();
+  async function handleAddAthlete(e) {
+  e.preventDefault();
 
-    if (!newAthlete.name || !newAthlete.age || !newAthlete.level || !newAthlete.parent) {
-      return;
-    }
-
-    setAthletes([
-      ...athletes,
-      {
-        ...newAthlete,
-        status: "Active",
-      },
-    ]);
-
-    setNewAthlete({
-      name: "",
-      age: "",
-      level: "",
-      parent: "",
-    });
+  if (!newAthlete.name || !newAthlete.age || !newAthlete.level || !newAthlete.parent) {
+    return;
   }
 
-  function handleDeleteAthlete(indexToDelete) {
-    const updatedAthletes = athletes.filter((athlete, index) => index !== indexToDelete);
-    setAthletes(updatedAthletes);
+  const athleteToAdd = {
+    name: newAthlete.name,
+    age: Number(newAthlete.age),
+    level: newAthlete.level,
+    parent: newAthlete.parent,
+    status: "Active",
+  };
+
+  const { data, error } = await supabase
+    .from("Athletes")
+    .insert([athleteToAdd])
+    .select();
+
+  if (error) {
+    console.error("Error adding athlete:", error);
+    return;
   }
+
+  setAthletes([...athletes, data[0]]);
+
+  setNewAthlete({
+    name: "",
+    age: "",
+    level: "",
+    parent: "",
+  });
+}
+
+  async function handleDeleteAthlete(idToDelete) {
+  console.log("Deleting athlete id:", idToDelete);
+
+  const { error } = await supabase
+    .from("Athletes")
+    .delete()
+    .eq("id", idToDelete);
+
+  if (error) {
+    console.error("Error deleting athlete:", error);
+    return;
+  }
+
+  setAthletes(athletes.filter((athlete) => athlete.id !== idToDelete));
+}
 
   function handleStartEdit(index) {
     setEditingIndex(index);
@@ -72,28 +114,38 @@ export default function Athletes() {
     });
   }
 
-  function handleSaveEdit(index) {
-    const updatedAthletes = athletes.map((athlete, athleteIndex) => {
-      if (athleteIndex === index) {
-        return {
-          ...athlete,
-          ...editedAthlete,
-        };
-      }
+  async function handleSaveEdit(id) {
+  const { data, error } = await supabase
+    .from("Athletes")
+    .update({
+      name: editedAthlete.name,
+      age: Number(editedAthlete.age),
+      level: editedAthlete.level,
+      parent: editedAthlete.parent,
+    })
+    .eq("id", id)
+    .select();
 
-      return athlete;
-    });
-
-    setAthletes(updatedAthletes);
-    setEditingIndex(null);
-
-    setEditedAthlete({
-      name: "",
-      age: "",
-      level: "",
-      parent: "",
-    });
+  if (error) {
+    console.error("Error updating athlete:", error);
+    return;
   }
+
+  const updatedAthletes = athletes.map((athlete) =>
+    athlete.id === id ? data[0] : athlete
+  );
+
+  setAthletes(updatedAthletes);
+
+  setEditingIndex(null);
+
+  setEditedAthlete({
+    name: "",
+    age: "",
+    level: "",
+    parent: "",
+  });
+}
 
   function handleCancelEdit() {
     setEditingIndex(null);
@@ -232,7 +284,7 @@ export default function Athletes() {
                   />
 
                   <div style={{ display: "flex", gap: "0.75rem", marginTop: "1rem" }}>
-                    <button onClick={() => handleSaveEdit(index)} style={goldButton}>
+                    <button onClick={() => handleSaveEdit(athlete.id)} style={goldButton}>
                       Save
                     </button>
 
@@ -256,7 +308,7 @@ export default function Athletes() {
                         Edit
                       </button>
 
-                      <button onClick={() => handleDeleteAthlete(index)} style={dangerButton}>
+                      <button onClick={() => handleDeleteAthlete(athlete.id)} style={dangerButton}>
                         Delete
                       </button>
                     </div>
