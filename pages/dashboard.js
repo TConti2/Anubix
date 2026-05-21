@@ -43,7 +43,9 @@ export default function Dashboard() {
 
         <nav style={{ display: "grid", gap: "1rem", color: "#cfcfcf" }}>
           <span>Dashboard</span>
-          <span>Athletes</span>
+          <a href="/athletes" style={{ color: "#cfcfcf", textDecoration: "none" }}>
+  Athletes
+</a>
           <span>Classes</span>
           <span>Attendance</span>
           <span>Payments</span>
