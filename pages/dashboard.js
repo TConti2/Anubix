@@ -42,15 +42,13 @@ export default function Dashboard() {
         <h2 style={{ color: "#d4af37", marginBottom: "2rem" }}>Anubix</h2>
 
         <nav style={{ display: "grid", gap: "1rem", color: "#cfcfcf" }}>
-          <span>Dashboard</span>
-          <a href="/athletes" style={{ color: "#cfcfcf", textDecoration: "none" }}>
-  Athletes
-</a>
-          <span>Classes</span>
-          <span>Attendance</span>
-          <span>Payments</span>
-          <span>Skill Pyramid</span>
-          <span>Settings</span>
+        
+          <a href="/dashboard" style={navLink}>Dashboard</a>
+<a href="/athletes" style={navLink}>Athletes</a>
+<a href="/classes" style={navLink}>Classes</a>
+<a href="/enrollments" style={navLink}>Enrollments</a>
+<span>Attendance</span>
+<span>Payments</span>
         </nav>
       </aside>
 
@@ -109,7 +107,10 @@ export default function Dashboard() {
     </div>
   );
 }
-
+const navLink = {
+  color: "#cfcfcf",
+  textDecoration: "none",
+};
 export async function getServerSideProps(context) {
   const session = await getSession(context);
 
