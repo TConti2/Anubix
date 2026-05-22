@@ -104,6 +104,14 @@ export default function Enrollments() {
   return (
     <div style={pageStyle}>
       <h1 style={{ color: "#d4af37" }}>Enrollments</h1>
+      
+      <nav style={{ display: "flex", gap: "1rem", marginBottom: "2rem" }}>
+  <a href="/dashboard" style={navLink}>Dashboard</a>
+  <a href="/athletes" style={navLink}>Athletes</a>
+  <a href="/classes" style={navLink}>Classes</a>
+  <a href="/enrollments" style={{ ...navLink, color: "#d4af37" }}>
+  Enrollments</a>
+</nav>
 
       <form onSubmit={handleEnrollment} style={formStyle}>
         <select
@@ -215,6 +223,11 @@ const cardStyle = {
   borderRadius: "16px",
   padding: "1rem",
   marginBottom: "1rem",
+};
+const navLink = {
+  color: "#cfcfcf",
+  textDecoration: "none",
+  fontWeight: "bold",
 };
 
 export async function getServerSideProps(context) {

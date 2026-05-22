@@ -20,15 +20,10 @@ globalThis.__BUILD_MANIFEST = {
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/athletes": [
+    "/dashboard": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/athletes.js"
-    ],
-    "/classes": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/classes.js"
+      "static/chunks/pages/dashboard.js"
     ],
     "/enrollments": [
       "static/chunks/webpack.js",
