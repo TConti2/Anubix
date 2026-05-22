@@ -24,6 +24,16 @@ globalThis.__BUILD_MANIFEST = {
       "static/chunks/webpack.js",
       "static/chunks/main.js",
       "static/chunks/pages/athletes.js"
+    ],
+    "/classes": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/classes.js"
+    ],
+    "/enrollments": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/enrollments.js"
     ]
   },
   "ampFirstPages": []

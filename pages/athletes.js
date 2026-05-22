@@ -4,8 +4,12 @@ import { supabase } from "../lib/supabaseClient";
 
 export default function Athletes() {
   const { data: session, status } = useSession();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [athletes, setAthletes] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
+
   const [newAthlete, setNewAthlete] = useState({
     name: "",
     age: "",
@@ -21,31 +25,42 @@ export default function Athletes() {
     level: "",
     parent: "",
   });
-useEffect(() => {
-  fetchAthletes();
-}, []);
 
-async function fetchAthletes() {
-  console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
-  console.log("Supabase key exists:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  useEffect(() => {
+    fetchAthletes();
+  }, []);
 
-  const { data, error } = await supabase
-    .from("Athletes")
-    .select("*");
+  async function fetchAthletes() {
+    const { data: athleteData, error: athleteError } = await supabase
+      .from("Athletes")
+      .select("*");
 
-  console.log("Athletes data:", data);
-  console.log("Athletes error:", error);
+    const { data: classData, error: classError } = await supabase
+      .from("Classes")
+      .select("*");
 
-  if (error) {
-    console.error("Error fetching athletes:", error);
-    return;
+    const { data: enrollmentData, error: enrollmentError } = await supabase
+      .from("Enrollments")
+      .select("*");
+
+    if (athleteError) {
+      console.error("Error fetching athletes:", athleteError);
+      return;
+    }
+
+    if (classError) {
+      console.error("Error fetching classes:", classError);
+    }
+
+    if (enrollmentError) {
+      console.error("Error fetching enrollments:", enrollmentError);
+    }
+
+    setAthletes(athleteData || []);
+    setClasses(classData || []);
+    setEnrollments(enrollmentData || []);
   }
 
-  setAthletes(data || []);
-}
-
-
-  
   const filteredAthletes = athletes.filter((athlete) =>
     athlete.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     athlete.level.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -53,99 +68,97 @@ async function fetchAthletes() {
   );
 
   async function handleAddAthlete(e) {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!newAthlete.name || !newAthlete.age || !newAthlete.level || !newAthlete.parent) {
-    return;
+    if (!newAthlete.name || !newAthlete.age || !newAthlete.level || !newAthlete.parent) {
+      return;
+    }
+
+    const athleteToAdd = {
+      name: newAthlete.name,
+      age: Number(newAthlete.age),
+      level: newAthlete.level,
+      parent: newAthlete.parent,
+      status: "Active",
+    };
+
+    const { data, error } = await supabase
+      .from("Athletes")
+      .insert([athleteToAdd])
+      .select();
+
+    if (error) {
+      console.error("Error adding athlete:", error);
+      return;
+    }
+
+    setAthletes([...athletes, data[0]]);
+
+    setNewAthlete({
+      name: "",
+      age: "",
+      level: "",
+      parent: "",
+    });
   }
-
-  const athleteToAdd = {
-    name: newAthlete.name,
-    age: Number(newAthlete.age),
-    level: newAthlete.level,
-    parent: newAthlete.parent,
-    status: "Active",
-  };
-
-  const { data, error } = await supabase
-    .from("Athletes")
-    .insert([athleteToAdd])
-    .select();
-
-  if (error) {
-    console.error("Error adding athlete:", error);
-    return;
-  }
-
-  setAthletes([...athletes, data[0]]);
-
-  setNewAthlete({
-    name: "",
-    age: "",
-    level: "",
-    parent: "",
-  });
-}
 
   async function handleDeleteAthlete(idToDelete) {
-  console.log("Deleting athlete id:", idToDelete);
+    const { error } = await supabase
+      .from("Athletes")
+      .delete()
+      .eq("id", idToDelete);
 
-  const { error } = await supabase
-    .from("Athletes")
-    .delete()
-    .eq("id", idToDelete);
+    if (error) {
+      console.error("Error deleting athlete:", error);
+      return;
+    }
 
-  if (error) {
-    console.error("Error deleting athlete:", error);
-    return;
+    setAthletes(athletes.filter((athlete) => athlete.id !== idToDelete));
   }
-
-  setAthletes(athletes.filter((athlete) => athlete.id !== idToDelete));
-}
 
   function handleStartEdit(index) {
     setEditingIndex(index);
 
     setEditedAthlete({
-      name: athletes[index].name,
-      age: athletes[index].age,
-      level: athletes[index].level,
-      parent: athletes[index].parent,
+      name: filteredAthletes[index].name,
+      age: filteredAthletes[index].age,
+      level: filteredAthletes[index].level,
+      parent: filteredAthletes[index].parent,
     });
   }
 
   async function handleSaveEdit(id) {
-  const { data, error } = await supabase
-    .from("Athletes")
-    .update({
-      name: editedAthlete.name,
-      age: Number(editedAthlete.age),
-      level: editedAthlete.level,
-      parent: editedAthlete.parent,
-    })
-    .eq("id", id)
-    .select();
+    const { data, error } = await supabase
+      .from("Athletes")
+      .update({
+        name: editedAthlete.name,
+        age: Number(editedAthlete.age),
+        level: editedAthlete.level,
+        parent: editedAthlete.parent,
+      })
+      .eq("id", id)
+      .select();
 
-  if (error) {
-    console.error("Error updating athlete:", error);
-    return;
+    if (error) {
+      console.error("Error updating athlete:", error);
+      return;
+    }
+
+    const updatedAthletes = athletes.map((athlete) =>
+      athlete.id === id ? data[0] : athlete
+    );
+
+    setAthletes(updatedAthletes);
+
+    setEditingIndex(null);
+
+    setEditedAthlete({
+      name: "",
+      age: "",
+      level: "",
+      parent: "",
+    });
   }
-
-  const updatedAthletes = athletes.map((athlete) =>
-    athlete.id === id ? data[0] : athlete
-  );
-
-  setAthletes(updatedAthletes);
-
-  setEditingIndex(null);
-
-  setEditedAthlete({
-    name: "",
-    age: "",
-    level: "",
-    parent: "",
-  });
-}
 
   function handleCancelEdit() {
     setEditingIndex(null);
@@ -156,6 +169,20 @@ async function fetchAthletes() {
       level: "",
       parent: "",
     });
+  }
+
+  function getAthleteEnrollments(athleteId) {
+    return enrollments.filter(
+      (enrollment) => Number(enrollment.athlete_id) === Number(athleteId)
+    );
+  }
+
+  function getClassName(classId) {
+    const cls = classes.find(
+      (cls) => Number(cls.id) === Number(classId)
+    );
+
+    return cls ? cls.name : "Unknown Class";
   }
 
   if (status === "loading") {
@@ -179,11 +206,10 @@ async function fetchAthletes() {
         <nav style={{ display: "grid", gap: "1rem", color: "#cfcfcf" }}>
           <a href="/dashboard" style={navLink}>Dashboard</a>
           <a href="/athletes" style={{ ...navLink, color: "#d4af37" }}>Athletes</a>
-          <span>Classes</span>
+          <a href="/classes" style={navLink}>Classes</a>
+          <a href="/enrollments" style={navLink}>Enrollments</a>
           <span>Attendance</span>
           <span>Payments</span>
-          <span>Skill Pyramid</span>
-          <span>Settings</span>
         </nav>
       </aside>
 
@@ -255,7 +281,7 @@ async function fetchAthletes() {
 
         <section style={gridStyle}>
           {filteredAthletes.map((athlete, index) => (
-            <div key={index} style={cardStyle}>
+            <div key={athlete.id} style={cardStyle}>
               {editingIndex === index ? (
                 <>
                   <input
@@ -296,9 +322,26 @@ async function fetchAthletes() {
               ) : (
                 <>
                   <h2 style={{ marginTop: 0, color: "#d4af37" }}>{athlete.name}</h2>
+
                   <p><strong>Age:</strong> {athlete.age}</p>
                   <p><strong>Level:</strong> {athlete.level}</p>
                   <p><strong>Parent:</strong> {athlete.parent}</p>
+
+                  <div style={{ marginTop: "1rem" }}>
+                    <strong>Enrolled Classes:</strong>
+
+                    <p>
+                      Count: {getAthleteEnrollments(athlete.id).length}
+                    </p>
+
+                    <ul style={{ paddingLeft: "1.2rem" }}>
+                      {getAthleteEnrollments(athlete.id).map((enrollment) => (
+                        <li key={enrollment.id}>
+                          {getClassName(enrollment.class_id)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
 
                   <div style={cardFooterStyle}>
                     <span style={activeBadgeStyle}>{athlete.status}</span>
