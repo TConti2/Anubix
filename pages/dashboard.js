@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSession, useSession, signOut } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
+
 import StatCard from "../components/StatCard";
 import QuickActions from "../components/QuickActions";
 import UpcomingClasses from "../components/UpcomingClasses";
@@ -9,28 +10,69 @@ import CalendarView from "../components/CalendarView";
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
+
   const [userRole, setUserRole] = useState("");
+  const [dashboardStats, setDashboardStats] = useState({
+    activeStudents: 0,
+    totalClasses: 0,
+  });
+  const [activityLog, setActivityLog] = useState([]);
 
   useEffect(() => {
-    async function fetchUserRole() {
-      if (!session?.user?.email) return;
-
-      const { data, error } = await supabase
-        .from("Users")
-        .select("role")
-        .eq("email", session.user.email)
-        .single();
-
-      if (error) {
-        console.error("User role error:", error);
-        return;
-      }
-
-      setUserRole(data?.role || "");
-    }
+    if (!session?.user?.email) return;
 
     fetchUserRole();
+    fetchDashboardStats();
+    fetchActivityLog();
   }, [session]);
+
+  async function fetchUserRole() {
+    const { data, error } = await supabase
+      .from("Users")
+      .select("role")
+      .eq("email", session.user.email)
+      .single();
+
+    if (error) {
+      console.error("User role error:", error);
+      return;
+    }
+
+    setUserRole(data?.role || "");
+  }
+
+  async function fetchDashboardStats() {
+    const { count: athleteCount, error: athleteError } = await supabase
+      .from("Athletes")
+      .select("*", { count: "exact", head: true });
+
+    const { count: classCount, error: classError } = await supabase
+      .from("Classes")
+      .select("*", { count: "exact", head: true });
+
+    if (athleteError) console.error("Athlete count error:", athleteError);
+    if (classError) console.error("Class count error:", classError);
+
+    setDashboardStats({
+      activeStudents: athleteCount || 0,
+      totalClasses: classCount || 0,
+    });
+  }
+
+  async function fetchActivityLog() {
+    const { data, error } = await supabase
+      .from("ActivityLog")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    if (error) {
+      console.error("Activity log fetch error:", error);
+      return;
+    }
+
+    setActivityLog(data || []);
+  }
 
   if (status === "loading") {
     return <p style={{ padding: "2rem" }}>Loading...</p>;
@@ -57,7 +99,10 @@ export default function Dashboard() {
           <a href="/dashboard" style={{ ...navLink, color: "#d4af37" }}>
             Dashboard
           </a>
-          <a href="/my-progress" style={navLink}>My Progress</a>
+
+          <a href="/my-progress" style={navLink}>
+            My Progress
+          </a>
 
           {(isAdmin || isCoach) && (
             <>
@@ -82,6 +127,7 @@ export default function Dashboard() {
         <header style={headerStyle}>
           <div>
             <h1 style={{ margin: 0 }}>Dashboard</h1>
+
             <p style={{ color: "#aaa", marginTop: "0.5rem" }}>
               Welcome back, {session.user.name}
             </p>
@@ -97,10 +143,30 @@ export default function Dashboard() {
         </header>
 
         <section style={statsGridStyle}>
-          <StatCard title="Active Students" value="142" />
-          <StatCard title="Total Classes" value="23" />
+          <StatCard title="Active Students" value={dashboardStats.activeStudents} />
+          <StatCard title="Total Classes" value={dashboardStats.totalClasses} />
           <StatCard title="Signups This Week" value="12" />
           <StatCard title="Revenue (MTD)" value="$3,450" />
+        </section>
+
+        <section style={activityPanelStyle}>
+          <h2 style={{ color: "#d4af37", marginTop: 0 }}>
+            Recent Activity
+          </h2>
+
+          {activityLog.length === 0 ? (
+            <p style={{ color: "#aaa" }}>No recent activity yet.</p>
+          ) : (
+            activityLog.map((item) => (
+              <div key={item.id} style={activityItemStyle}>
+                <strong>{item.action}</strong>
+
+                <p style={{ margin: "0.35rem 0 0", color: "#aaa" }}>
+                  {item.description}
+                </p>
+              </div>
+            ))
+          )}
         </section>
 
         <section style={{ display: "grid", gap: "2rem" }}>
@@ -162,6 +228,19 @@ const statsGridStyle = {
   gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
   gap: "1rem",
   marginBottom: "2rem",
+};
+
+const activityPanelStyle = {
+  background: "#15151d",
+  border: "1px solid #2a2a35",
+  borderRadius: "16px",
+  padding: "1.5rem",
+  marginBottom: "2rem",
+};
+
+const activityItemStyle = {
+  borderBottom: "1px solid #2a2a35",
+  padding: "0.75rem 0",
 };
 
 export async function getServerSideProps(context) {
