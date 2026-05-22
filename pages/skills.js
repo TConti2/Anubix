@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSession, useSession } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
+import { logActivity } from "../lib/ActivityLogger";
 
 export default function Skills() {
   const { data: session, status } = useSession();
@@ -90,6 +91,16 @@ async function handleSkillProgress(e) {
       )
     );
     setStatusMessage("Skill progress updated.");
+    const athleteName = getAthleteName(athleteId);
+const skillName = skills.find(
+  (skill) => Number(skill.id) === skillId
+)?.name;
+
+await logActivity(
+  "Skill Progress Updated",
+  `${athleteName} updated to ${selectedStatus} in ${skillName}`
+);
+
   } else {
     const progressRecord = {
       athlete_id: athleteId,
@@ -110,6 +121,16 @@ async function handleSkillProgress(e) {
 
     setAthleteSkills([...athleteSkills, data[0]]);
     setStatusMessage("Skill progress added.");
+    
+    const athleteName = getAthleteName(athleteId);
+const skillName = skills.find(
+  (skill) => Number(skill.id) === skillId
+)?.name;
+
+await logActivity(
+  "Skill Progress Added",
+  `${athleteName} marked ${selectedStatus} in ${skillName}`
+);
   }
 
   setSelectedAthlete("");
