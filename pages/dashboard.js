@@ -43,11 +43,11 @@ export default function Dashboard() {
 
         <nav style={{ display: "grid", gap: "1rem", color: "#cfcfcf" }}>
         
-          <a href="/dashboard" style={navLink}>Dashboard</a>
+<a href="/dashboard" style={navLink}>Dashboard</a>
 <a href="/athletes" style={navLink}>Athletes</a>
 <a href="/classes" style={navLink}>Classes</a>
 <a href="/enrollments" style={navLink}>Enrollments</a>
-<span>Attendance</span>
+<a href="/attendance" style={navLink}>Attendance</a>
 <span>Payments</span>
         </nav>
       </aside>
