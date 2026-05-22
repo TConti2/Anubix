@@ -13,6 +13,7 @@ export default function Skills() {
   const [tiers, setTiers] = useState([]);
   const [skills, setSkills] = useState([]);
   const [userRole, setUserRole] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
 
   useEffect(() => {
     if (session?.user?.email) {
@@ -57,14 +58,42 @@ export default function Skills() {
     setUserRole(userData?.role || "");
   }
 
-  async function handleSkillProgress(e) {
-    e.preventDefault();
+async function handleSkillProgress(e) {
+  e.preventDefault();
 
-    if (!selectedAthlete || !selectedSkill) return;
+  if (!selectedAthlete || !selectedSkill) return;
 
+  const athleteId = Number(selectedAthlete);
+  const skillId = Number(selectedSkill);
+
+  const existingRecord = athleteSkills.find(
+    (record) =>
+      Number(record.athlete_id) === athleteId &&
+      Number(record.skill_id) === skillId
+  );
+
+  if (existingRecord) {
+    const { data, error } = await supabase
+      .from("AthleteSkills")
+      .update({ status: selectedStatus })
+      .eq("id", existingRecord.id)
+      .select();
+
+    if (error) {
+      console.error("Skill progress update error:", error);
+      return;
+    }
+
+    setAthleteSkills(
+      athleteSkills.map((record) =>
+        record.id === existingRecord.id ? data[0] : record
+      )
+    );
+    setStatusMessage("Skill progress updated.");
+  } else {
     const progressRecord = {
-      athlete_id: Number(selectedAthlete),
-      skill_id: Number(selectedSkill),
+      athlete_id: athleteId,
+      skill_id: skillId,
       status: selectedStatus,
       coach_notes: "",
     };
@@ -75,15 +104,18 @@ export default function Skills() {
       .select();
 
     if (error) {
-      console.error("Skill progress error:", error);
+      console.error("Skill progress insert error:", error);
       return;
     }
 
     setAthleteSkills([...athleteSkills, data[0]]);
-    setSelectedAthlete("");
-    setSelectedSkill("");
-    setSelectedStatus("Constructing");
+    setStatusMessage("Skill progress added.");
   }
+
+  setSelectedAthlete("");
+  setSelectedSkill("");
+  setSelectedStatus("Constructing");
+}
 
   async function handleUpdateSkillProgress(recordId, newStatus) {
     const { data, error } = await supabase
@@ -245,6 +277,11 @@ export default function Skills() {
           Update Skill Progress
         </button>
       </form>
+{statusMessage && (
+  <p style={{ color: "#d4af37", marginBottom: "1rem" }}>
+    {statusMessage}
+  </p>
+)}
 
       <div style={pyramidStyle}>
         {tiers.map((tier) => (
