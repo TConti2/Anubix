@@ -2,8 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/attendance": "pages/attendance.js",
-  "/api/auth/[...nextauth]": "pages/api/auth/[...nextauth].js",
-  "/enrollments": "pages/enrollments.js",
-  "/dashboard": "pages/dashboard.js"
+  "/skills": "pages/skills.js",
+  "/dashboard": "pages/dashboard.js",
+  "/api/auth/[...nextauth]": "pages/api/auth/[...nextauth].js"
 }

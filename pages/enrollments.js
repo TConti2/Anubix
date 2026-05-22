@@ -106,9 +106,9 @@ export default function Enrollments() {
   <a href="/dashboard" style={navLink}>Dashboard</a>
   <a href="/athletes" style={navLink}>Athletes</a>
   <a href="/classes" style={navLink}>Classes</a>
-  <a href="/enrollments" style={{ ...navLink, color: "#d4af37" }}>
   <a href="/attendance" style={navLink}>Attendance</a>
-  Enrollments</a>
+  <a href="/enrollments" style={{ ...navLink, color: "#d4af37" }}>Enrollments</a>
+  
 </nav>
 
       <form onSubmit={handleEnrollment} style={formStyle}>
