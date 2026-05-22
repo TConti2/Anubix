@@ -4,12 +4,10 @@ import { supabase } from "../lib/supabaseClient";
 
 export default function Athletes() {
   const { data: session, status } = useSession();
-
   const [searchTerm, setSearchTerm] = useState("");
   const [athletes, setAthletes] = useState([]);
   const [classes, setClasses] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
-
   const [newAthlete, setNewAthlete] = useState({
     name: "",
     age: "",
@@ -208,7 +206,7 @@ export default function Athletes() {
           <a href="/athletes" style={{ ...navLink, color: "#d4af37" }}>Athletes</a>
           <a href="/classes" style={navLink}>Classes</a>
           <a href="/enrollments" style={navLink}>Enrollments</a>
-          <span>Attendance</span>
+          <a href="/attendance" style={navLink}>Attendance</a>
           <span>Payments</span>
         </nav>
       </aside>
