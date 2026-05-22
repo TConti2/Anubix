@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { getSession, useSession, signOut } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
-
 import StatCard from "../components/StatCard";
 import QuickActions from "../components/QuickActions";
 import UpcomingClasses from "../components/UpcomingClasses";
@@ -58,6 +57,7 @@ export default function Dashboard() {
           <a href="/dashboard" style={{ ...navLink, color: "#d4af37" }}>
             Dashboard
           </a>
+          <a href="/my-progress" style={navLink}>My Progress</a>
 
           {(isAdmin || isCoach) && (
             <>
