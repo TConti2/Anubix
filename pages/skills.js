@@ -4,18 +4,21 @@ import { supabase } from "../lib/supabaseClient";
 
 export default function Skills() {
   const { data: session, status } = useSession();
-const [athletes, setAthletes] = useState([]);
-const [athleteSkills, setAthleteSkills] = useState([]);
 
-const [selectedAthlete, setSelectedAthlete] = useState("");
-const [selectedSkill, setSelectedSkill] = useState("");
-const [selectedStatus, setSelectedStatus] = useState("Constructing");
+  const [athletes, setAthletes] = useState([]);
+  const [athleteSkills, setAthleteSkills] = useState([]);
+  const [selectedAthlete, setSelectedAthlete] = useState("");
+  const [selectedSkill, setSelectedSkill] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("Constructing");
   const [tiers, setTiers] = useState([]);
   const [skills, setSkills] = useState([]);
+  const [userRole, setUserRole] = useState("");
 
   useEffect(() => {
-    fetchPyramid();
-  }, []);
+    if (session?.user?.email) {
+      fetchPyramid();
+    }
+  }, [session]);
 
   async function fetchPyramid() {
     const { data: tierData, error: tierError } = await supabase
@@ -23,95 +26,170 @@ const [selectedStatus, setSelectedStatus] = useState("Constructing");
       .select("*")
       .order("order", { ascending: true });
 
-      console.log("Tiers:", tierData);
-
     const { data: skillData, error: skillError } = await supabase
       .from("Skills")
       .select("*");
 
-      console.log("Skills:", skillData);
+    const { data: athleteData, error: athleteError } = await supabase
+      .from("Athletes")
+      .select("*");
+
+    const { data: athleteSkillData, error: athleteSkillError } = await supabase
+      .from("AthleteSkills")
+      .select("*");
+
+    const { data: userData, error: userError } = await supabase
+      .from("Users")
+      .select("role")
+      .eq("email", session.user.email)
+      .single();
 
     if (tierError) console.error("Tier error:", tierError);
     if (skillError) console.error("Skill error:", skillError);
+    if (athleteError) console.error("Athlete error:", athleteError);
+    if (athleteSkillError) console.error("Athlete skill error:", athleteSkillError);
+    if (userError) console.error("User role error:", userError);
 
     setTiers(tierData || []);
     setSkills(skillData || []);
-    const { data: athleteData } = await supabase
-  .from("Athletes")
-  .select("*");
-
-const { data: athleteSkillData } = await supabase
-  .from("AthleteSkills")
-  .select("*");
-
-setAthletes(athleteData || []);
-setAthleteSkills(athleteSkillData || []);
-  }
-async function handleSkillProgress(e) {
-  e.preventDefault();
-
-  if (!selectedAthlete || !selectedSkill) {
-    return;
+    setAthletes(athleteData || []);
+    setAthleteSkills(athleteSkillData || []);
+    setUserRole(userData?.role || "");
   }
 
-  const progressRecord = {
-    athlete_id: Number(selectedAthlete),
-    skill_id: Number(selectedSkill),
-    status: selectedStatus,
-    coach_notes: "",
-  };
+  async function handleSkillProgress(e) {
+    e.preventDefault();
 
-  const { data, error } = await supabase
-    .from("AthleteSkills")
-    .insert([progressRecord])
-    .select();
+    if (!selectedAthlete || !selectedSkill) return;
 
-  if (error) {
-    console.error("Skill progress error:", error);
-    return;
+    const progressRecord = {
+      athlete_id: Number(selectedAthlete),
+      skill_id: Number(selectedSkill),
+      status: selectedStatus,
+      coach_notes: "",
+    };
+
+    const { data, error } = await supabase
+      .from("AthleteSkills")
+      .insert([progressRecord])
+      .select();
+
+    if (error) {
+      console.error("Skill progress error:", error);
+      return;
+    }
+
+    setAthleteSkills([...athleteSkills, data[0]]);
+    setSelectedAthlete("");
+    setSelectedSkill("");
+    setSelectedStatus("Constructing");
   }
 
-  setAthleteSkills([...athleteSkills, data[0]]);
+  async function handleUpdateSkillProgress(recordId, newStatus) {
+    const { data, error } = await supabase
+      .from("AthleteSkills")
+      .update({ status: newStatus })
+      .eq("id", recordId)
+      .select();
 
-  setSelectedAthlete("");
-  setSelectedSkill("");
-  setSelectedStatus("Constructing");
-}
-function getSkillsForTier(tierId) {
+    if (error) {
+      console.error("Error updating skill progress:", error);
+      return;
+    }
+
+    setAthleteSkills(
+      athleteSkills.map((record) =>
+        record.id === recordId ? data[0] : record
+      )
+    );
+  }
+
+  async function handleDeleteSkillProgress(recordId) {
+    const { error } = await supabase
+      .from("AthleteSkills")
+      .delete()
+      .eq("id", recordId);
+
+    if (error) {
+      console.error("Error deleting skill progress:", error);
+      return;
+    }
+
+    setAthleteSkills(
+      athleteSkills.filter((record) => record.id !== recordId)
+    );
+  }
+
+  function getSkillsForTier(tierId) {
     return skills.filter((skill) => Number(skill.tier_id) === Number(tierId));
   }
-function getSkillProgress(skillId) {
-  return athleteSkills.filter(
-    (record) => Number(record.skill_id) === Number(skillId)
-  );
-}
-async function handleUpdateSkillProgress(recordId, newStatus) {
-  const { data, error } = await supabase
-    .from("AthleteSkills")
-    .update({ status: newStatus })
-    .eq("id", recordId)
-    .select();
 
-  if (error) {
-    console.error("Error updating skill progress:", error);
-    return;
+  function getSkillProgress(skillId) {
+    return athleteSkills.filter(
+      (record) => Number(record.skill_id) === Number(skillId)
+    );
   }
 
-  setAthleteSkills(
-    athleteSkills.map((record) =>
-      record.id === recordId ? data[0] : record
-    )
-  );
-}
-function getAthleteName(athleteId) {
-  const athlete = athletes.find(
-    (athlete) => Number(athlete.id) === Number(athleteId)
-  );
+  function getAthleteName(athleteId) {
+    const athlete = athletes.find(
+      (athlete) => Number(athlete.id) === Number(athleteId)
+    );
 
-  return athlete ? athlete.name : "Unknown Athlete";
-}
+    return athlete ? athlete.name : "Unknown Athlete";
+  }
+
+  function renderStatusSection(skill, statusName, headerStyle) {
+    const records = getSkillProgress(skill.id).filter(
+      (record) => record.status === statusName
+    );
+
+    if (records.length === 0) return null;
+
+    return (
+      <div style={statusSectionStyle}>
+        <h4 style={headerStyle}>{statusName}</h4>
+
+        {records.map((record) => (
+          <div key={record.id} style={athleteRowStyle}>
+            <span>{getAthleteName(record.athlete_id)}</span>
+
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <select
+                value={record.status}
+                onChange={(e) =>
+                  handleUpdateSkillProgress(record.id, e.target.value)
+                }
+                style={miniSelect}
+              >
+                <option value="Constructing">Constructing</option>
+                <option value="Completed">Completed</option>
+                <option value="Shining">Shining</option>
+              </select>
+
+              <button
+                onClick={() => handleDeleteSkillProgress(record.id)}
+                style={miniDangerButton}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (status === "loading") return <p style={pageStyle}>Loading...</p>;
   if (!session) return <p style={pageStyle}>Access Denied</p>;
+
+  if (userRole && userRole !== "admin" && userRole !== "coach") {
+    return (
+      <div style={pageStyle}>
+        <h1>Access Denied</h1>
+        <p>This area is only available to coaches and admins.</p>
+      </div>
+    );
+  }
 
   return (
     <div style={pageStyle}>
@@ -125,71 +203,58 @@ function getAthleteName(athleteId) {
         <a href="/attendance" style={navLink}>Attendance</a>
         <a href="/skills" style={{ ...navLink, color: "#d4af37" }}>Skill Pyramid</a>
       </nav>
-      <form
-  onSubmit={handleSkillProgress}
-  style={{
-    background: "#15151d",
-    border: "1px solid #2a2a35",
-    borderRadius: "18px",
-    padding: "1.5rem",
-    marginBottom: "2rem",
-    display: "grid",
-    gap: "1rem",
-    maxWidth: "500px",
-  }}
->
-  <select
-    value={selectedAthlete}
-    onChange={(e) => setSelectedAthlete(e.target.value)}
-    style={inputStyle}
-  >
-    <option value="">Select Athlete</option>
 
-    {athletes.map((athlete) => (
-      <option key={athlete.id} value={athlete.id}>
-        {athlete.name}
-      </option>
-    ))}
-  </select>
+      <form onSubmit={handleSkillProgress} style={progressFormStyle}>
+        <select
+          value={selectedAthlete}
+          onChange={(e) => setSelectedAthlete(e.target.value)}
+          style={inputStyle}
+        >
+          <option value="">Select Athlete</option>
+          {athletes.map((athlete) => (
+            <option key={athlete.id} value={athlete.id}>
+              {athlete.name}
+            </option>
+          ))}
+        </select>
 
-  <select
-    value={selectedSkill}
-    onChange={(e) => setSelectedSkill(e.target.value)}
-    style={inputStyle}
-  >
-    <option value="">Select Skill</option>
+        <select
+          value={selectedSkill}
+          onChange={(e) => setSelectedSkill(e.target.value)}
+          style={inputStyle}
+        >
+          <option value="">Select Skill</option>
+          {skills.map((skill) => (
+            <option key={skill.id} value={skill.id}>
+              {skill.name}
+            </option>
+          ))}
+        </select>
 
-    {skills.map((skill) => (
-      <option key={skill.id} value={skill.id}>
-        {skill.name}
-      </option>
-    ))}
-  </select>
+        <select
+          value={selectedStatus}
+          onChange={(e) => setSelectedStatus(e.target.value)}
+          style={inputStyle}
+        >
+          <option value="Constructing">Constructing</option>
+          <option value="Completed">Completed</option>
+          <option value="Shining">Shining</option>
+        </select>
 
-  <select
-    value={selectedStatus}
-    onChange={(e) => setSelectedStatus(e.target.value)}
-    style={inputStyle}
-  >
-    <option value="Constructing">Constructing</option>
-    <option value="Completed">Completed</option>
-    <option value="Shining">Shining</option>
-  </select>
-
-  <button type="submit" style={buttonStyle}>
-    Update Skill Progress
-  </button>
-</form>
+        <button type="submit" style={buttonStyle}>
+          Update Skill Progress
+        </button>
+      </form>
 
       <div style={pyramidStyle}>
         {tiers.map((tier) => (
           <div
-  key={tier.id}
-  style={{
-    ...tierStyle,
-    maxWidth: `${1100 - Number(tier.order) * 150}px`,
-  }}
->
+            key={tier.id}
+            style={{
+              ...tierStyle,
+              maxWidth: `${1100 - Number(tier.order) * 150}px`,
+            }}
+          >
             <h2 style={{ color: "#d4af37", marginTop: 0 }}>
               {tier.name}
             </h2>
@@ -200,101 +265,16 @@ function getAthleteName(athleteId) {
               {getSkillsForTier(tier.id).map((skill) => (
                 <div key={skill.id} style={skillCardStyle}>
                   <strong>{skill.name}</strong>
-                  <p style={{ color: "#aaa", marginBottom: 0 }}>
+
+                  <p style={{ color: "#aaa" }}>
                     {skill.description}
                   </p>
-                 <div style={{ marginTop: "1rem" }}>
-  <strong>Constructing</strong>
 
-  <ul style={{ paddingLeft: "1.2rem" }}>
-    {getSkillProgress(skill.id)
-      .filter((record) => record.status === "Constructing")
-      .map((record) => (
-        <li key={record.id} style={{ marginBottom: "0.4rem" }}>
-  {getAthleteName(record.athlete_id)}
-<select
-  value={record.status}
-  onChange={(e) =>
-    handleUpdateSkillProgress(record.id, e.target.value)
-  }
-  style={miniSelect}
->
-  <option value="Constructing">Constructing</option>
-  <option value="Completed">Completed</option>
-  <option value="Shining">Shining</option>
-</select>
-  <button
-    onClick={() => handleDeleteSkillProgress(record.id)}
-    style={miniDangerButton}
-  >
-    Remove
-  </button>
-</li>
-      ))}
-  </ul>
-
-  <strong>Completed</strong>
-
-  <ul style={{ paddingLeft: "1.2rem" }}>
-    {getSkillProgress(skill.id)
-      .filter((record) => record.status === "Completed")
-      .map((record) => (
-       <li key={record.id} style={{ marginBottom: "0.4rem" }}>
-  {getAthleteName(record.athlete_id)}
-
-  <select
-    value={record.status}
-    onChange={(e) =>
-      handleUpdateSkillProgress(record.id, e.target.value)
-    }
-    style={miniSelect}
-  >
-    <option value="Constructing">Constructing</option>
-    <option value="Completed">Completed</option>
-    <option value="Shining">Shining</option>
-  </select>
-
-  <button
-    onClick={() => handleDeleteSkillProgress(record.id)}
-    style={miniDangerButton}
-  >
-    Remove
-  </button>
-</li>
-      ))}
-  </ul>
-
-  <strong>Shining</strong>
-
-  <ul style={{ paddingLeft: "1.2rem" }}>
-    {getSkillProgress(skill.id)
-      .filter((record) => record.status === "Shining")
-      .map((record) => (
-        <li key={record.id} style={{ marginBottom: "0.4rem" }}>
-  {getAthleteName(record.athlete_id)}
-
-  <select
-    value={record.status}
-    onChange={(e) =>
-      handleUpdateSkillProgress(record.id, e.target.value)
-    }
-    style={miniSelect}
-  >
-    <option value="Constructing">Constructing</option>
-    <option value="Completed">Completed</option>
-    <option value="Shining">Shining</option>
-  </select>
-
-  <button
-    onClick={() => handleDeleteSkillProgress(record.id)}
-    style={miniDangerButton}
-  >
-    Remove
-  </button>
-</li>
-      ))}
-  </ul>
-</div>
+                  <div style={{ marginTop: "1rem", textAlign: "left" }}>
+                    {renderStatusSection(skill, "Constructing", constructingHeaderStyle)}
+                    {renderStatusSection(skill, "Completed", completedHeaderStyle)}
+                    {renderStatusSection(skill, "Shining", shiningHeaderStyle)}
+                  </div>
                 </div>
               ))}
             </div>
@@ -326,6 +306,17 @@ const navLink = {
   fontWeight: "bold",
 };
 
+const progressFormStyle = {
+  background: "#15151d",
+  border: "1px solid #2a2a35",
+  borderRadius: "18px",
+  padding: "1.5rem",
+  marginBottom: "2rem",
+  display: "grid",
+  gap: "1rem",
+  maxWidth: "500px",
+};
+
 const pyramidStyle = {
   display: "flex",
   flexDirection: "column-reverse",
@@ -346,10 +337,48 @@ const tierStyle = {
 
 const skillGridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
   gap: "1rem",
   marginTop: "1rem",
 };
+
+const skillCardStyle = {
+  background: "#0b0b0f",
+  border: "1px solid #2a2a35",
+  borderRadius: "14px",
+  padding: "1rem",
+};
+
+const statusSectionStyle = {
+  marginBottom: "1rem",
+  background: "#111118",
+  padding: "0.8rem",
+  borderRadius: "12px",
+};
+
+const athleteRowStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: "0.5rem",
+  gap: "1rem",
+};
+
+const constructingHeaderStyle = {
+  color: "#d97706",
+  marginTop: 0,
+};
+
+const completedHeaderStyle = {
+  color: "#9ca3af",
+  marginTop: 0,
+};
+
+const shiningHeaderStyle = {
+  color: "#d4af37",
+  marginTop: 0,
+};
+
 const inputStyle = {
   padding: "0.9rem 1rem",
   borderRadius: "12px",
@@ -368,15 +397,7 @@ const buttonStyle = {
   cursor: "pointer",
 };
 
-const skillCardStyle = {
-  background: "#0b0b0f",
-  border: "1px solid #2a2a35",
-  borderRadius: "14px",
-  padding: "1rem",
-};
-
 const miniDangerButton = {
-  marginLeft: "0.6rem",
   background: "#3b1111",
   color: "#ffb4b4",
   border: "1px solid #7f1d1d",
@@ -388,7 +409,6 @@ const miniDangerButton = {
 };
 
 const miniSelect = {
-  marginLeft: "0.6rem",
   background: "#15151d",
   color: "#f5f5f5",
   border: "1px solid #2a2a35",
