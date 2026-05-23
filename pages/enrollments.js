@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSession, useSession } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
-import { logActivity } from "../lib/activityLogger";
+import { logActivity } from "../lib/ActivityLogger";
 
 export default function Enrollments() {
   const { data: session, status } = useSession();
@@ -37,62 +37,99 @@ export default function Enrollments() {
     setEnrollments(enrollmentData || []);
   }
 
-  async function handleEnrollment(e) {
-    e.preventDefault();
+async function handleEnrollment(e) {
+  e.preventDefault();
 
-    if (!selectedAthlete || !selectedClass) {
-      return;
-    }
+  if (!selectedAthlete || !selectedClass) return;
 
-    const enrollment = {
-      athlete_id: Number(selectedAthlete),
-      class_id: Number(selectedClass),
-      status: "Active",
-    };
+  const existingEnrollment = enrollments.find(
+    (enrollment) =>
+      Number(enrollment.athlete_id) === Number(selectedAthlete) &&
+      Number(enrollment.class_id) === Number(selectedClass)
+  );
 
-    const { data, error } = await supabase
-      .from("Enrollments")
-      .insert([enrollment])
-      .select();
-
-    if (error) {
-      console.error("Error adding enrollment:", error);
-      return;
-    }
-
-    setEnrollments([...enrollments, data[0]]);
-    
-    const athleteName = athletes.find(
-  (athlete) => Number(athlete.id) === Number(newEnrollment.athlete_id)
-)?.name;
-
-const className = classes.find(
-  (cls) => Number(cls.id) === Number(newEnrollment.class_id)
-)?.name;
-
-await logActivity(
-  "Enrollment Created",
-  `${athleteName} enrolled in ${className}`
-);
-    setSelectedAthlete("");
-    setSelectedClass("");
+  if (existingEnrollment) {
+    alert("This athlete is already enrolled in that class.");
+    return;
   }
 
-  async function handleDeleteEnrollment(idToDelete) {
-    const { error } = await supabase
-      .from("Enrollments")
-      .delete()
-      .eq("id", idToDelete);
+  const selectedClassData = classes.find(
+    (cls) => Number(cls.id) === Number(selectedClass)
+  );
 
-    if (error) {
-      console.error("Error deleting enrollment:", error);
-      return;
-    }
+  const currentEnrollmentCount = enrollments.filter(
+    (enrollment) => Number(enrollment.class_id) === Number(selectedClass)
+  ).length;
 
-    setEnrollments(
-      enrollments.filter((enrollment) => enrollment.id !== idToDelete)
-    );
+  if (selectedClassData && currentEnrollmentCount >= Number(selectedClassData.capacity)) {
+    alert("This class is full.");
+    return;
   }
+
+  const enrollment = {
+    athlete_id: Number(selectedAthlete),
+    class_id: Number(selectedClass),
+    status: "Active",
+  };
+
+  const { data, error } = await supabase
+    .from("Enrollments")
+    .insert([enrollment])
+    .select();
+
+  if (error) {
+    console.error("Error adding enrollment:", error);
+    return;
+  }
+
+  setEnrollments([...enrollments, data[0]]);
+
+  await logActivity(
+    "Enrollment Created",
+    `${getAthleteName(Number(selectedAthlete))} enrolled in ${getClassName(Number(selectedClass))}`
+  );
+
+  setSelectedAthlete("");
+  setSelectedClass("");
+}
+
+ async function handleDeleteEnrollment(idToDelete) {
+  const enrollmentToDelete = enrollments.find(
+    (enrollment) => Number(enrollment.id) === Number(idToDelete)
+  );
+
+  const athleteName = enrollmentToDelete
+    ? getAthleteName(enrollmentToDelete.athlete_id)
+    : "An athlete";
+
+  const className = enrollmentToDelete
+    ? getClassName(enrollmentToDelete.class_id)
+    : "a class";
+
+  const { error } = await supabase
+    .from("Enrollments")
+    .delete()
+    .eq("id", idToDelete);
+
+  if (error) {
+    console.error("Error deleting enrollment:", error);
+    function getClassEnrollmentCount(classId) {
+  return enrollments.filter(
+    (enrollment) => Number(enrollment.class_id) === Number(classId)
+  ).length;
+}
+    return;
+  }
+
+  setEnrollments(
+    enrollments.filter((enrollment) => enrollment.id !== idToDelete)
+  );
+
+  await logActivity(
+    "Enrollment Removed",
+    `${athleteName} was removed from ${className}`
+  );
+}
 
   function getAthleteName(id) {
     const athlete = athletes.find((a) => a.id === id);
@@ -147,11 +184,22 @@ await logActivity(
         >
           <option value="">Select Class</option>
 
-          {classes.map((cls) => (
-            <option key={cls.id} value={cls.id}>
-              {cls.name}
-            </option>
-          ))}
+          {classes.map((cls) => {
+  const count = getClassEnrollmentCount(cls.id);
+  const isFull = count >= Number(cls.capacity);
+  function getClassEnrollmentCount(classId) {
+  return enrollments.filter(
+    (enrollment) =>
+      Number(enrollment.class_id) === Number(classId)
+  ).length;
+}
+
+  return (
+    <option key={cls.id} value={cls.id}>
+      {cls.name} — {count}/{cls.capacity} {isFull ? "(Full)" : ""}
+    </option>
+  );
+})}
         </select>
 
         <button type="submit" style={buttonStyle}>
