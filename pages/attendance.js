@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSession, useSession } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
+import { logActivity } from "../lib/activityLogger";
 
 export default function Attendance() {
   const { data: session, status } = useSession();
@@ -57,7 +58,13 @@ export default function Attendance() {
     }
 
     setAttendance([...attendance, data[0]]);
+const athleteName = getAthleteName(Number(selectedAthlete));
+const className = getClassName(Number(selectedClass));
 
+await logActivity(
+  "Attendance Marked",
+  `${athleteName} marked ${selectedStatus} for ${className}`
+);
     setSelectedAthlete("");
     setSelectedClass("");
     setSelectedStatus("Present");

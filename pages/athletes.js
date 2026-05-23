@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSession, useSession, signOut } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
+import { logActivity } from "../lib/ActivityLogger";
 
 export default function Athletes() {
   const { data: session, status } = useSession();
@@ -91,6 +92,8 @@ export default function Athletes() {
     }
 
     setAthletes([...athletes, data[0]]);
+
+    
 
     setNewAthlete({
       name: "",
