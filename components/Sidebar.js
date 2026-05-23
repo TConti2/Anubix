@@ -32,15 +32,23 @@ export default function Sidebar({ activePage = "" }) {
 
   const links = [
     { label: "Dashboard", href: "/dashboard", key: "dashboard" },
-    { label: "Activity", href: "/activity", key: "activity" },
     { label: "My Progress", href: "/my-progress", key: "my-progress" },
+
     ...(isAdmin || isCoach
       ? [
+          { label: "Activity", href: "/activity", key: "activity" },
           { label: "Athletes", href: "/athletes", key: "athletes" },
           { label: "Classes", href: "/classes", key: "classes" },
           { label: "Enrollments", href: "/enrollments", key: "enrollments" },
           { label: "Attendance", href: "/attendance", key: "attendance" },
           { label: "Skill Pyramid", href: "/skills", key: "skills" },
+        ]
+      : []),
+
+    ...(isAdmin
+      ? [
+          { label: "Payments", href: "/payments", key: "payments" },
+          { label: "Settings", href: "/settings", key: "settings" },
         ]
       : []),
   ];
@@ -62,13 +70,6 @@ export default function Sidebar({ activePage = "" }) {
             {link.label}
           </a>
         ))}
-
-        {isAdmin && (
-          <>
-            <span>Payments</span>
-            <span>Settings</span>
-          </>
-        )}
       </nav>
     </aside>
   );

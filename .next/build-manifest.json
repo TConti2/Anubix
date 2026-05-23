@@ -28,15 +28,45 @@
       "static/chunks/main.js",
       "static/chunks/pages/activity.js"
     ],
+    "/athletes": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/athletes.js"
+    ],
+    "/attendance": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/attendance.js"
+    ],
+    "/classes": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/classes.js"
+    ],
     "/dashboard": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
       "static/chunks/pages/dashboard.js"
     ],
-    "/my-progress": [
+    "/enrollments": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/my-progress.js"
+      "static/chunks/pages/enrollments.js"
+    ],
+    "/payments": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/payments.js"
+    ],
+    "/settings": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/settings.js"
+    ],
+    "/skills": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/skills.js"
     ]
   },
   "ampFirstPages": []
