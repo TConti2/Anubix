@@ -1,12 +1,47 @@
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { supabase } from "../lib/supabaseClient";
+
 export default function Sidebar({ activePage = "" }) {
+  const { data: session } = useSession();
+  const [userRole, setUserRole] = useState("");
+
+  useEffect(() => {
+    async function fetchUserRole() {
+      if (!session?.user?.email) return;
+
+      const { data, error } = await supabase
+        .from("Users")
+        .select("role")
+        .eq("email", session.user.email)
+        .single();
+
+      if (error) {
+        console.error("Sidebar role error:", error);
+        return;
+      }
+
+      setUserRole(data?.role || "");
+    }
+
+    fetchUserRole();
+  }, [session]);
+
+  const isAdmin = userRole === "admin";
+  const isCoach = userRole === "coach";
+
   const links = [
     { label: "Dashboard", href: "/dashboard", key: "dashboard" },
     { label: "My Progress", href: "/my-progress", key: "my-progress" },
-    { label: "Athletes", href: "/athletes", key: "athletes" },
-    { label: "Classes", href: "/classes", key: "classes" },
-    { label: "Enrollments", href: "/enrollments", key: "enrollments" },
-    { label: "Attendance", href: "/attendance", key: "attendance" },
-    { label: "Skill Pyramid", href: "/skills", key: "skills" },
+    ...(isAdmin || isCoach
+      ? [
+          { label: "Athletes", href: "/athletes", key: "athletes" },
+          { label: "Classes", href: "/classes", key: "classes" },
+          { label: "Enrollments", href: "/enrollments", key: "enrollments" },
+          { label: "Attendance", href: "/attendance", key: "attendance" },
+          { label: "Skill Pyramid", href: "/skills", key: "skills" },
+        ]
+      : []),
   ];
 
   return (
@@ -27,8 +62,12 @@ export default function Sidebar({ activePage = "" }) {
           </a>
         ))}
 
-        <span>Payments</span>
-        <span>Settings</span>
+        {isAdmin && (
+          <>
+            <span>Payments</span>
+            <span>Settings</span>
+          </>
+        )}
       </nav>
     </aside>
   );
