@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [dashboardStats, setDashboardStats] = useState({
     activeStudents: 0,
     totalClasses: 0,
+    totalEnrollments: 0,
   });
   const [activityLog, setActivityLog] = useState([]);
 
@@ -56,7 +57,13 @@ export default function Dashboard() {
     setDashboardStats({
       activeStudents: athleteCount || 0,
       totalClasses: classCount || 0,
+      totalEnrollments: enrollmentCount || 0,
     });
+    const { count: enrollmentCount, error: enrollmentError } = await supabase
+  .from("Enrollments")
+  .select("*", { count: "exact", head: true });
+
+if (enrollmentError) console.error("Enrollment count error:", enrollmentError);
   }
 
   async function fetchActivityLog() {
@@ -145,7 +152,7 @@ export default function Dashboard() {
         <section style={statsGridStyle}>
           <StatCard title="Active Students" value={dashboardStats.activeStudents} />
           <StatCard title="Total Classes" value={dashboardStats.totalClasses} />
-          <StatCard title="Signups This Week" value="12" />
+          <StatCard title="Total Enrollments" value={dashboardStats.totalEnrollments} />
           <StatCard title="Revenue (MTD)" value="$3,450" />
         </section>
 

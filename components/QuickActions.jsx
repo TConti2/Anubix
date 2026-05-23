@@ -1,4 +1,8 @@
+import { useRouter } from "next/router";
+
 export default function QuickActions() {
+  const router = useRouter();
+
   const buttonStyle = {
     background: "#1f1f2b",
     color: "#f5f5f5",
@@ -29,16 +33,39 @@ export default function QuickActions() {
           flexWrap: "wrap",
         }}
       >
-        <button style={buttonStyle}>
-          Add New Student
+        <button
+          style={buttonStyle}
+          onClick={() => router.push("/athletes")}
+        >
+          Add Athlete
         </button>
 
-        <button style={buttonStyle}>
-          Create New Class
+        <button
+          style={buttonStyle}
+          onClick={() => router.push("/classes")}
+        >
+          Create Class
         </button>
 
-        <button style={buttonStyle}>
-          Send Announcement
+        <button
+          style={buttonStyle}
+          onClick={() => router.push("/enrollments")}
+        >
+          Enroll Athlete
+        </button>
+
+        <button
+          style={buttonStyle}
+          onClick={() => router.push("/attendance")}
+        >
+          Mark Attendance
+        </button>
+
+        <button
+          style={buttonStyle}
+          onClick={() => router.push("/skills")}
+        >
+          Skill Pyramid
         </button>
       </div>
     </div>
