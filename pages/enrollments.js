@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSession, useSession } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
+import { logActivity } from "../lib/activityLogger";
 
 export default function Enrollments() {
   const { data: session, status } = useSession();
@@ -60,6 +61,19 @@ export default function Enrollments() {
     }
 
     setEnrollments([...enrollments, data[0]]);
+    
+    const athleteName = athletes.find(
+  (athlete) => Number(athlete.id) === Number(newEnrollment.athlete_id)
+)?.name;
+
+const className = classes.find(
+  (cls) => Number(cls.id) === Number(newEnrollment.class_id)
+)?.name;
+
+await logActivity(
+  "Enrollment Created",
+  `${athleteName} enrolled in ${className}`
+);
     setSelectedAthlete("");
     setSelectedClass("");
   }

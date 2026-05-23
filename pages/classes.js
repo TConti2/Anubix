@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSession, useSession, signOut } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
+import { logActivity } from "../lib/activityLogger";
 
 export default function Classes() {
   const { data: session, status } = useSession();
@@ -87,6 +88,10 @@ if (athleteError) {
     }
 
     setClasses([...classes, data[0]]);
+    await logActivity(
+  "Class Created",
+  `${newClass.name} was created`
+);
 
     setNewClass({
       name: "",
