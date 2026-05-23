@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSession, useSession, signOut } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
-
+import Sidebar from "../components/Sidebar";
 import StatCard from "../components/StatCard";
 import QuickActions from "../components/QuickActions";
 import UpcomingClasses from "../components/UpcomingClasses";
@@ -99,36 +99,7 @@ if (enrollmentError) console.error("Enrollment count error:", enrollmentError);
 
   return (
     <div style={pageShell}>
-      <aside style={sidebarStyle}>
-        <h2 style={{ color: "#d4af37", marginBottom: "2rem" }}>Anubix</h2>
-
-        <nav style={navStyle}>
-          <a href="/dashboard" style={{ ...navLink, color: "#d4af37" }}>
-            Dashboard
-          </a>
-
-          <a href="/my-progress" style={navLink}>
-            My Progress
-          </a>
-
-          {(isAdmin || isCoach) && (
-            <>
-              <a href="/athletes" style={navLink}>Athletes</a>
-              <a href="/classes" style={navLink}>Classes</a>
-              <a href="/enrollments" style={navLink}>Enrollments</a>
-              <a href="/attendance" style={navLink}>Attendance</a>
-              <a href="/skills" style={navLink}>Skill Pyramid</a>
-            </>
-          )}
-
-          {isAdmin && (
-            <>
-              <span>Payments</span>
-              <span>Settings</span>
-            </>
-          )}
-        </nav>
-      </aside>
+     <Sidebar activePage="dashboard" />
 
       <main style={{ flex: 1, padding: "2rem" }}>
         <header style={headerStyle}>
@@ -193,24 +164,6 @@ const pageShell = {
   color: "#f5f5f5",
   fontFamily: "Arial, sans-serif",
   display: "flex",
-};
-
-const sidebarStyle = {
-  width: "240px",
-  background: "#111118",
-  borderRight: "1px solid #2a2a35",
-  padding: "1.5rem",
-};
-
-const navStyle = {
-  display: "grid",
-  gap: "1rem",
-  color: "#cfcfcf",
-};
-
-const navLink = {
-  color: "#cfcfcf",
-  textDecoration: "none",
 };
 
 const headerStyle = {

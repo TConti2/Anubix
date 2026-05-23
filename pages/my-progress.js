@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSession, useSession } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
+import Sidebar from "../components/Sidebar";
 
 export default function MyProgress() {
   const { data: session, status } = useSession();
@@ -73,97 +74,90 @@ export default function MyProgress() {
   }
 
   if (status === "loading") {
-    return <p style={pageStyle}>Loading...</p>;
+    return <p style={{ padding: "2rem" }}>Loading...</p>;
   }
 
   if (!session) {
-    return <p style={pageStyle}>Access Denied</p>;
+    return <p style={{ padding: "2rem" }}>Access Denied</p>;
   }
 
   if (!linkedAthleteId) {
     return (
-      <div style={pageStyle}>
-        <h1 style={{ color: "#d4af37" }}>My Progress</h1>
-        <p>No athlete profile is linked to this account yet.</p>
+      <div style={pageShell}>
+        <Sidebar activePage="my-progress" />
+
+        <main style={mainStyle}>
+          <h1 style={{ color: "#d4af37" }}>My Progress</h1>
+          <p>No athlete profile is linked to this account yet.</p>
+        </main>
       </div>
     );
   }
 
   return (
-    <div style={pageStyle}>
-      <h1 style={{ color: "#d4af37" }}>My Progress</h1>
+    <div style={pageShell}>
+      <Sidebar activePage="my-progress" />
 
-      <nav style={navStyle}>
-        <a href="/dashboard" style={navLink}>Dashboard</a>
-        <a href="/my-progress" style={{ ...navLink, color: "#d4af37" }}>
-          My Progress
-        </a>
-      </nav>
+      <main style={mainStyle}>
+        <h1 style={{ color: "#d4af37" }}>My Progress</h1>
 
-      <p style={{ color: "#aaa", marginBottom: "2rem" }}>
-        Private athlete progression view.
-      </p>
+        <p style={{ color: "#aaa", marginBottom: "2rem" }}>
+          Private athlete progression view.
+        </p>
 
-      <div style={pyramidStyle}>
-        {tiers.map((tier) => (
-          <div
-            key={tier.id}
-            style={{
-              ...tierStyle,
-              maxWidth: `${1100 - Number(tier.order) * 150}px`,
-            }}
-          >
-            <h2 style={{ color: "#d4af37", marginTop: 0 }}>
-              {tier.name}
-            </h2>
+        <div style={pyramidStyle}>
+          {tiers.map((tier) => (
+            <div
+              key={tier.id}
+              style={{
+                ...tierStyle,
+                maxWidth: `${1100 - Number(tier.order) * 150}px`,
+              }}
+            >
+              <h2 style={{ color: "#d4af37", marginTop: 0 }}>
+                {tier.name}
+              </h2>
 
-            <p style={{ color: "#aaa" }}>{tier.description}</p>
+              <p style={{ color: "#aaa" }}>{tier.description}</p>
 
-            <div style={skillGridStyle}>
-              {getSkillsForTier(tier.id).map((skill) => {
-                const skillStatus = getSkillStatus(skill.id);
+              <div style={skillGridStyle}>
+                {getSkillsForTier(tier.id).map((skill) => {
+                  const skillStatus = getSkillStatus(skill.id);
 
-                return (
-                  <div key={skill.id} style={getSkillStyle(skillStatus)}>
-                    <strong>{skill.name}</strong>
+                  return (
+                    <div key={skill.id} style={getSkillStyle(skillStatus)}>
+                      <strong>{skill.name}</strong>
 
-                    <p style={{ color: "#aaa" }}>
-                      {skill.description}
-                    </p>
+                      <p style={{ color: "#aaa" }}>
+                        {skill.description}
+                      </p>
 
-                    <p style={{ marginBottom: 0 }}>
-                      Status: <strong>{skillStatus}</strong>
-                    </p>
-                  </div>
-                );
-              })}
+                      <p style={{ marginBottom: 0 }}>
+                        Status: <strong>{skillStatus}</strong>
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </main>
     </div>
   );
 }
 
-const pageStyle = {
+const pageShell = {
   minHeight: "100vh",
   background: "#0b0b0f",
   color: "#f5f5f5",
-  padding: "2rem",
   fontFamily: "Arial, sans-serif",
-};
-
-const navStyle = {
   display: "flex",
-  gap: "1rem",
-  marginBottom: "2rem",
-  flexWrap: "wrap",
 };
 
-const navLink = {
-  color: "#cfcfcf",
-  textDecoration: "none",
-  fontWeight: "bold",
+const mainStyle = {
+  flex: 1,
+  padding: "2rem",
 };
 
 const pyramidStyle = {

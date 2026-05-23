@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getSession, useSession } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
 import { logActivity } from "../lib/ActivityLogger";
+import Sidebar from "../components/Sidebar";
 
 export default function Skills() {
   const { data: session, status } = useSession();
@@ -59,84 +60,78 @@ export default function Skills() {
     setUserRole(userData?.role || "");
   }
 
-async function handleSkillProgress(e) {
-  e.preventDefault();
+  async function handleSkillProgress(e) {
+    e.preventDefault();
 
-  if (!selectedAthlete || !selectedSkill) return;
+    if (!selectedAthlete || !selectedSkill) return;
 
-  const athleteId = Number(selectedAthlete);
-  const skillId = Number(selectedSkill);
+    const athleteId = Number(selectedAthlete);
+    const skillId = Number(selectedSkill);
 
-  const existingRecord = athleteSkills.find(
-    (record) =>
-      Number(record.athlete_id) === athleteId &&
-      Number(record.skill_id) === skillId
-  );
-
-  if (existingRecord) {
-    const { data, error } = await supabase
-      .from("AthleteSkills")
-      .update({ status: selectedStatus })
-      .eq("id", existingRecord.id)
-      .select();
-
-    if (error) {
-      console.error("Skill progress update error:", error);
-      return;
-    }
-
-    setAthleteSkills(
-      athleteSkills.map((record) =>
-        record.id === existingRecord.id ? data[0] : record
-      )
+    const existingRecord = athleteSkills.find(
+      (record) =>
+        Number(record.athlete_id) === athleteId &&
+        Number(record.skill_id) === skillId
     );
-    setStatusMessage("Skill progress updated.");
+
     const athleteName = getAthleteName(athleteId);
-const skillName = skills.find(
-  (skill) => Number(skill.id) === skillId
-)?.name;
+    const skillName = skills.find((skill) => Number(skill.id) === skillId)?.name;
 
-await logActivity(
-  "Skill Progress Updated",
-  `${athleteName} updated to ${selectedStatus} in ${skillName}`
-);
+    if (existingRecord) {
+      const { data, error } = await supabase
+        .from("AthleteSkills")
+        .update({ status: selectedStatus })
+        .eq("id", existingRecord.id)
+        .select();
 
-  } else {
-    const progressRecord = {
-      athlete_id: athleteId,
-      skill_id: skillId,
-      status: selectedStatus,
-      coach_notes: "",
-    };
+      if (error) {
+        console.error("Skill progress update error:", error);
+        return;
+      }
 
-    const { data, error } = await supabase
-      .from("AthleteSkills")
-      .insert([progressRecord])
-      .select();
+      setAthleteSkills(
+        athleteSkills.map((record) =>
+          record.id === existingRecord.id ? data[0] : record
+        )
+      );
 
-    if (error) {
-      console.error("Skill progress insert error:", error);
-      return;
+      setStatusMessage("Skill progress updated.");
+
+      await logActivity(
+        "Skill Progress Updated",
+        `${athleteName} updated to ${selectedStatus} in ${skillName}`
+      );
+    } else {
+      const progressRecord = {
+        athlete_id: athleteId,
+        skill_id: skillId,
+        status: selectedStatus,
+        coach_notes: "",
+      };
+
+      const { data, error } = await supabase
+        .from("AthleteSkills")
+        .insert([progressRecord])
+        .select();
+
+      if (error) {
+        console.error("Skill progress insert error:", error);
+        return;
+      }
+
+      setAthleteSkills([...athleteSkills, data[0]]);
+      setStatusMessage("Skill progress added.");
+
+      await logActivity(
+        "Skill Progress Added",
+        `${athleteName} marked ${selectedStatus} in ${skillName}`
+      );
     }
 
-    setAthleteSkills([...athleteSkills, data[0]]);
-    setStatusMessage("Skill progress added.");
-    
-    const athleteName = getAthleteName(athleteId);
-const skillName = skills.find(
-  (skill) => Number(skill.id) === skillId
-)?.name;
-
-await logActivity(
-  "Skill Progress Added",
-  `${athleteName} marked ${selectedStatus} in ${skillName}`
-);
+    setSelectedAthlete("");
+    setSelectedSkill("");
+    setSelectedStatus("Constructing");
   }
-
-  setSelectedAthlete("");
-  setSelectedSkill("");
-  setSelectedStatus("Constructing");
-}
 
   async function handleUpdateSkillProgress(recordId, newStatus) {
     const { data, error } = await supabase
@@ -245,103 +240,112 @@ await logActivity(
   }
 
   return (
-    <div style={pageStyle}>
-      <h1 style={{ color: "#d4af37" }}>Skill Pyramid</h1>
+    <div style={pageShell}>
+      <Sidebar activePage="skills" />
 
-      <nav style={navStyle}>
-        <a href="/dashboard" style={navLink}>Dashboard</a>
-        <a href="/athletes" style={navLink}>Athletes</a>
-        <a href="/classes" style={navLink}>Classes</a>
-        <a href="/enrollments" style={navLink}>Enrollments</a>
-        <a href="/attendance" style={navLink}>Attendance</a>
-        <a href="/skills" style={{ ...navLink, color: "#d4af37" }}>Skill Pyramid</a>
-      </nav>
+      <main style={mainStyle}>
+        <h1 style={{ color: "#d4af37" }}>Skill Pyramid</h1>
 
-      <form onSubmit={handleSkillProgress} style={progressFormStyle}>
-        <select
-          value={selectedAthlete}
-          onChange={(e) => setSelectedAthlete(e.target.value)}
-          style={inputStyle}
-        >
-          <option value="">Select Athlete</option>
-          {athletes.map((athlete) => (
-            <option key={athlete.id} value={athlete.id}>
-              {athlete.name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={selectedSkill}
-          onChange={(e) => setSelectedSkill(e.target.value)}
-          style={inputStyle}
-        >
-          <option value="">Select Skill</option>
-          {skills.map((skill) => (
-            <option key={skill.id} value={skill.id}>
-              {skill.name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
-          style={inputStyle}
-        >
-          <option value="Constructing">Constructing</option>
-          <option value="Completed">Completed</option>
-          <option value="Shining">Shining</option>
-        </select>
-
-        <button type="submit" style={buttonStyle}>
-          Update Skill Progress
-        </button>
-      </form>
-{statusMessage && (
-  <p style={{ color: "#d4af37", marginBottom: "1rem" }}>
-    {statusMessage}
-  </p>
-)}
-
-      <div style={pyramidStyle}>
-        {tiers.map((tier) => (
-          <div
-            key={tier.id}
-            style={{
-              ...tierStyle,
-              maxWidth: `${1100 - Number(tier.order) * 150}px`,
-            }}
+        <form onSubmit={handleSkillProgress} style={progressFormStyle}>
+          <select
+            value={selectedAthlete}
+            onChange={(e) => setSelectedAthlete(e.target.value)}
+            style={inputStyle}
           >
-            <h2 style={{ color: "#d4af37", marginTop: 0 }}>
-              {tier.name}
-            </h2>
+            <option value="">Select Athlete</option>
+            {athletes.map((athlete) => (
+              <option key={athlete.id} value={athlete.id}>
+                {athlete.name}
+              </option>
+            ))}
+          </select>
 
-            <p style={{ color: "#aaa" }}>{tier.description}</p>
+          <select
+            value={selectedSkill}
+            onChange={(e) => setSelectedSkill(e.target.value)}
+            style={inputStyle}
+          >
+            <option value="">Select Skill</option>
+            {skills.map((skill) => (
+              <option key={skill.id} value={skill.id}>
+                {skill.name}
+              </option>
+            ))}
+          </select>
 
-            <div style={skillGridStyle}>
-              {getSkillsForTier(tier.id).map((skill) => (
-                <div key={skill.id} style={skillCardStyle}>
-                  <strong>{skill.name}</strong>
+          <select
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            style={inputStyle}
+          >
+            <option value="Constructing">Constructing</option>
+            <option value="Completed">Completed</option>
+            <option value="Shining">Shining</option>
+          </select>
 
-                  <p style={{ color: "#aaa" }}>
-                    {skill.description}
-                  </p>
+          <button type="submit" style={buttonStyle}>
+            Update Skill Progress
+          </button>
+        </form>
 
-                  <div style={{ marginTop: "1rem", textAlign: "left" }}>
-                    {renderStatusSection(skill, "Constructing", constructingHeaderStyle)}
-                    {renderStatusSection(skill, "Completed", completedHeaderStyle)}
-                    {renderStatusSection(skill, "Shining", shiningHeaderStyle)}
+        {statusMessage && (
+          <p style={{ color: "#d4af37", marginBottom: "1rem" }}>
+            {statusMessage}
+          </p>
+        )}
+
+        <div style={pyramidStyle}>
+          {tiers.map((tier) => (
+            <div
+              key={tier.id}
+              style={{
+                ...tierStyle,
+                maxWidth: `${1100 - Number(tier.order) * 150}px`,
+              }}
+            >
+              <h2 style={{ color: "#d4af37", marginTop: 0 }}>
+                {tier.name}
+              </h2>
+
+              <p style={{ color: "#aaa" }}>{tier.description}</p>
+
+              <div style={skillGridStyle}>
+                {getSkillsForTier(tier.id).map((skill) => (
+                  <div key={skill.id} style={skillCardStyle}>
+                    <strong>{skill.name}</strong>
+
+                    <p style={{ color: "#aaa" }}>
+                      {skill.description}
+                    </p>
+
+                    <div style={{ marginTop: "1rem", textAlign: "left" }}>
+                      {renderStatusSection(skill, "Constructing", constructingHeaderStyle)}
+                      {renderStatusSection(skill, "Completed", completedHeaderStyle)}
+                      {renderStatusSection(skill, "Shining", shiningHeaderStyle)}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </main>
     </div>
   );
 }
+
+const pageShell = {
+  minHeight: "100vh",
+  background: "#0b0b0f",
+  color: "#f5f5f5",
+  fontFamily: "Arial, sans-serif",
+  display: "flex",
+};
+
+const mainStyle = {
+  flex: 1,
+  padding: "2rem",
+};
 
 const pageStyle = {
   minHeight: "100vh",
@@ -349,19 +353,6 @@ const pageStyle = {
   color: "#f5f5f5",
   padding: "2rem",
   fontFamily: "Arial, sans-serif",
-};
-
-const navStyle = {
-  display: "flex",
-  gap: "1rem",
-  marginBottom: "2rem",
-  flexWrap: "wrap",
-};
-
-const navLink = {
-  color: "#cfcfcf",
-  textDecoration: "none",
-  fontWeight: "bold",
 };
 
 const progressFormStyle = {
