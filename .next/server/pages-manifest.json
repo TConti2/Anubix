@@ -2,15 +2,6 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/dashboard": "pages/dashboard.js",
-  "/": "pages/index.js",
   "/api/auth/[...nextauth]": "pages/api/auth/[...nextauth].js",
-  "/settings": "pages/settings.js",
-  "/payments": "pages/payments.js",
-  "/skills": "pages/skills.js",
-  "/attendance": "pages/attendance.js",
-  "/enrollments": "pages/enrollments.js",
-  "/classes": "pages/classes.js",
-  "/athletes": "pages/athletes.js",
-  "/activity": "pages/activity.js"
+  "/settings": "pages/settings.js"
 }
