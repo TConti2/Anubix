@@ -12,11 +12,13 @@ export default function Dashboard() {
   const { data: session, status } = useSession();
 
   const [userRole, setUserRole] = useState("");
+
   const [dashboardStats, setDashboardStats] = useState({
     activeStudents: 0,
     totalClasses: 0,
     totalEnrollments: 0,
   });
+
   const [activityLog, setActivityLog] = useState([]);
 
   useEffect(() => {
@@ -51,19 +53,27 @@ export default function Dashboard() {
       .from("Classes")
       .select("*", { count: "exact", head: true });
 
-    if (athleteError) console.error("Athlete count error:", athleteError);
-    if (classError) console.error("Class count error:", classError);
+    const { count: enrollmentCount, error: enrollmentError } = await supabase
+      .from("Enrollments")
+      .select("*", { count: "exact", head: true });
+
+    if (athleteError) {
+      console.error("Athlete count error:", athleteError);
+    }
+
+    if (classError) {
+      console.error("Class count error:", classError);
+    }
+
+    if (enrollmentError) {
+      console.error("Enrollment count error:", enrollmentError);
+    }
 
     setDashboardStats({
       activeStudents: athleteCount || 0,
       totalClasses: classCount || 0,
       totalEnrollments: enrollmentCount || 0,
     });
-    const { count: enrollmentCount, error: enrollmentError } = await supabase
-  .from("Enrollments")
-  .select("*", { count: "exact", head: true });
-
-if (enrollmentError) console.error("Enrollment count error:", enrollmentError);
   }
 
   async function fetchActivityLog() {
@@ -96,12 +106,13 @@ if (enrollmentError) console.error("Enrollment count error:", enrollmentError);
 
   const isAdmin = userRole === "admin";
   const isCoach = userRole === "coach";
+  const isStaff = isAdmin || isCoach;
 
   return (
     <div style={pageShell}>
-     <Sidebar activePage="dashboard" />
+      <Sidebar activePage="dashboard" />
 
-      <main style={{ flex: 1, padding: "2rem" }}>
+      <main style={mainStyle}>
         <header style={headerStyle}>
           <div>
             <h1 style={{ margin: 0 }}>Dashboard</h1>
@@ -115,44 +126,98 @@ if (enrollmentError) console.error("Enrollment count error:", enrollmentError);
             </p>
           </div>
 
-          <button onClick={() => signOut()} style={goldButton}>
+          <button
+            onClick={() => signOut()}
+            style={goldButton}
+          >
             Sign out
           </button>
         </header>
 
-        <section style={statsGridStyle}>
-          <StatCard title="Active Students" value={dashboardStats.activeStudents} />
-          <StatCard title="Total Classes" value={dashboardStats.totalClasses} />
-          <StatCard title="Total Enrollments" value={dashboardStats.totalEnrollments} />
-          <StatCard title="Revenue (MTD)" value="$3,450" />
-        </section>
+        {!isStaff ? (
+          <section style={activityPanelStyle}>
+            <h2 style={{ color: "#d4af37", marginTop: 0 }}>
+              My Athlete Portal
+            </h2>
 
-        <section style={activityPanelStyle}>
-          <h2 style={{ color: "#d4af37", marginTop: 0 }}>
-            Recent Activity
-          </h2>
+            <p style={{ color: "#aaa" }}>
+              View your private progression dashboard and athlete development milestones.
+            </p>
 
-          {activityLog.length === 0 ? (
-            <p style={{ color: "#aaa" }}>No recent activity yet.</p>
-          ) : (
-            activityLog.map((item) => (
-              <div key={item.id} style={activityItemStyle}>
-                <strong>{item.action}</strong>
+            <a
+              href="/my-progress"
+              style={portalButtonStyle}
+            >
+              Open My Progress
+            </a>
+          </section>
+        ) : (
+          <>
+            <section style={statsGridStyle}>
+              <StatCard
+                title="Active Students"
+                value={dashboardStats.activeStudents}
+              />
 
-                <p style={{ margin: "0.35rem 0 0", color: "#aaa" }}>
-                  {item.description}
+              <StatCard
+                title="Total Classes"
+                value={dashboardStats.totalClasses}
+              />
+
+              <StatCard
+                title="Total Enrollments"
+                value={dashboardStats.totalEnrollments}
+              />
+
+              <StatCard
+                title="Revenue (MTD)"
+                value="$3,450"
+              />
+            </section>
+
+            <section style={activityPanelStyle}>
+              <h2 style={{ color: "#d4af37", marginTop: 0 }}>
+                Recent Activity
+              </h2>
+
+              {activityLog.length === 0 ? (
+                <p style={{ color: "#aaa" }}>
+                  No recent activity yet.
                 </p>
-              </div>
-            ))
-          )}
-        </section>
+              ) : (
+                activityLog.map((item) => (
+                  <div
+                    key={item.id}
+                    style={activityItemStyle}
+                  >
+                    <strong>{item.action}</strong>
 
-        <section style={{ display: "grid", gap: "2rem" }}>
-          <QuickActions />
-          <UpcomingClasses />
-          <CalendarView />
-          <ClassManager />
-        </section>
+                    <p
+                      style={{
+                        margin: "0.35rem 0 0",
+                        color: "#aaa",
+                      }}
+                    >
+                      {item.description}
+                    </p>
+                  </div>
+                ))
+              )}
+            </section>
+
+            <section
+              style={{
+                display: "grid",
+                gap: "2rem",
+              }}
+            >
+              <QuickActions />
+              <UpcomingClasses />
+              <CalendarView />
+              <ClassManager />
+            </section>
+          </>
+        )}
       </main>
     </div>
   );
@@ -166,11 +231,27 @@ const pageShell = {
   display: "flex",
 };
 
+const mainStyle = {
+  flex: 1,
+  padding: "2rem",
+};
+
 const headerStyle = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
   marginBottom: "2rem",
+};
+
+const portalButtonStyle = {
+  display: "inline-block",
+  background: "#d4af37",
+  color: "#0b0b0f",
+  textDecoration: "none",
+  padding: "0.75rem 1rem",
+  borderRadius: "10px",
+  fontWeight: "bold",
+  marginTop: "1rem",
 };
 
 const goldButton = {
