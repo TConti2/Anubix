@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import { getSession, useSession, signOut } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
-import { logActivity } from "../lib/ActivityLogger";
+import { logActivity } from "../lib/activityLogger";
 import Sidebar from "../components/Sidebar";
 
 export default function Athletes() {
   const { data: session, status } = useSession();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [athletes, setAthletes] = useState([]);
   const [classes, setClasses] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
+  const [userRole, setUserRole] = useState("");
+
   const [newAthlete, setNewAthlete] = useState({
     name: "",
     age: "",
@@ -27,8 +30,10 @@ export default function Athletes() {
   });
 
   useEffect(() => {
-    fetchAthletes();
-  }, []);
+    if (session?.user?.email) {
+      fetchAthletes();
+    }
+  }, [session]);
 
   async function fetchAthletes() {
     const { data: athleteData, error: athleteError } = await supabase
@@ -43,22 +48,21 @@ export default function Athletes() {
       .from("Enrollments")
       .select("*");
 
-    if (athleteError) {
-      console.error("Error fetching athletes:", athleteError);
-      return;
-    }
+    const { data: userData, error: userError } = await supabase
+      .from("Users")
+      .select("role")
+      .eq("email", session.user.email)
+      .single();
 
-    if (classError) {
-      console.error("Error fetching classes:", classError);
-    }
-
-    if (enrollmentError) {
-      console.error("Error fetching enrollments:", enrollmentError);
-    }
+    if (athleteError) console.error("Error fetching athletes:", athleteError);
+    if (classError) console.error("Error fetching classes:", classError);
+    if (enrollmentError) console.error("Error fetching enrollments:", enrollmentError);
+    if (userError) console.error("User role error:", userError);
 
     setAthletes(athleteData || []);
     setClasses(classData || []);
     setEnrollments(enrollmentData || []);
+    setUserRole(userData?.role || "");
   }
 
   const filteredAthletes = athletes.filter((athlete) =>
@@ -94,7 +98,10 @@ export default function Athletes() {
 
     setAthletes([...athletes, data[0]]);
 
-    
+    await logActivity(
+      "Athlete Added",
+      `${newAthlete.name} was added to Anubix`
+    );
 
     setNewAthlete({
       name: "",
@@ -105,27 +112,27 @@ export default function Athletes() {
   }
 
   async function handleDeleteAthlete(idToDelete) {
-  const athleteToDelete = athletes.find(
-    (athlete) => Number(athlete.id) === Number(idToDelete)
-  );
+    const athleteToDelete = athletes.find(
+      (athlete) => Number(athlete.id) === Number(idToDelete)
+    );
 
-  const { error } = await supabase
-    .from("Athletes")
-    .delete()
-    .eq("id", idToDelete);
+    const { error } = await supabase
+      .from("Athletes")
+      .delete()
+      .eq("id", idToDelete);
 
-  if (error) {
-    console.error("Error deleting athlete:", error);
-    return;
+    if (error) {
+      console.error("Error deleting athlete:", error);
+      return;
+    }
+
+    setAthletes(athletes.filter((athlete) => athlete.id !== idToDelete));
+
+    await logActivity(
+      "Athlete Deleted",
+      `${athleteToDelete?.name || "An athlete"} was deleted`
+    );
   }
-
-  setAthletes(athletes.filter((athlete) => athlete.id !== idToDelete));
-
-  await logActivity(
-    "Athlete Deleted",
-    `${athleteToDelete?.name || "An athlete"} was deleted`
-  );
-}
 
   function handleStartEdit(index) {
     setEditingIndex(index);
@@ -155,15 +162,16 @@ export default function Athletes() {
       return;
     }
 
-    const updatedAthletes = athletes.map((athlete) =>
-      athlete.id === id ? data[0] : athlete
+    setAthletes(
+      athletes.map((athlete) =>
+        athlete.id === id ? data[0] : athlete
+      )
     );
 
-    setAthletes(updatedAthletes);
     await logActivity(
-  "Athlete Updated",
-  `${editedAthlete.name} profile was updated`
-);
+      "Athlete Updated",
+      `${editedAthlete.name} profile was updated`
+    );
 
     setEditingIndex(null);
 
@@ -205,19 +213,27 @@ export default function Athletes() {
   }
 
   if (!session) {
+    return <p style={{ padding: "2rem" }}>Access Denied</p>;
+  }
+
+  if (userRole && userRole !== "admin" && userRole !== "coach") {
     return (
-      <div style={{ padding: "2rem" }}>
-        <h1>Access Denied</h1>
-        <p>You must be signed in to view this page.</p>
+      <div style={pageShell}>
+        <Sidebar activePage="athletes" />
+
+        <main style={mainStyle}>
+          <h1>Access Denied</h1>
+          <p>This area is only available to coaches and admins.</p>
+        </main>
       </div>
     );
   }
 
   return (
     <div style={pageShell}>
-     <Sidebar activePage="athletes" />
+      <Sidebar activePage="athletes" />
 
-      <main style={{ flex: 1, padding: "2rem" }}>
+      <main style={mainStyle}>
         <header style={headerStyle}>
           <div>
             <h1 style={{ margin: 0 }}>Athletes</h1>
@@ -376,6 +392,11 @@ const pageShell = {
   color: "#f5f5f5",
   fontFamily: "Arial, sans-serif",
   display: "flex",
+};
+
+const mainStyle = {
+  flex: 1,
+  padding: "2rem",
 };
 
 const headerStyle = {

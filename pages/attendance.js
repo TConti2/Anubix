@@ -6,11 +6,10 @@ import Sidebar from "../components/Sidebar";
 
 export default function Attendance() {
   const { data: session, status } = useSession();
-
   const [athletes, setAthletes] = useState([]);
   const [classes, setClasses] = useState([]);
   const [attendance, setAttendance] = useState([]);
-
+  const [userRole, setUserRole] = useState("");
   const [selectedAthlete, setSelectedAthlete] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("Present");
@@ -35,6 +34,18 @@ export default function Attendance() {
     setAthletes(athleteData || []);
     setClasses(classData || []);
     setAttendance(attendanceData || []);
+
+    const { data: userData, error: userError } = await supabase
+  .from("Users")
+  .select("role")
+  .eq("email", session.user.email)
+  .single();
+
+if (userError) {
+  console.error("User role error:", userError);
+}
+
+setUserRole(userData?.role || "");
   }
 
   async function handleAttendance(e) {
@@ -97,6 +108,18 @@ export default function Attendance() {
 
   if (!session) {
     return <p style={{ padding: "2rem" }}>Access Denied</p>;
+    if (userRole && userRole !== "admin" && userRole !== "coach") {
+  return (
+    <div style={pageShell}>
+      <Sidebar activePage="attendance" />
+
+      <main style={mainStyle}>
+        <h1>Access Denied</h1>
+        <p>This area is only available to coaches and admins.</p>
+      </main>
+    </div>
+  );
+}
   }
 
   return (

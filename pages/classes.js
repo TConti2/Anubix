@@ -6,10 +6,13 @@ import Sidebar from "../components/Sidebar";
 
 export default function Classes() {
   const { data: session, status } = useSession();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [classes, setClasses] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
   const [athletes, setAthletes] = useState([]);
+  const [userRole, setUserRole] = useState("");
+
   const [newClass, setNewClass] = useState({
     name: "",
     coach: "",
@@ -18,9 +21,10 @@ export default function Classes() {
     time: "",
     capacity: "",
   });
-  const[editingClassId, setEditingClassId] = useState(null);
 
-  const[editedClass, setEditedClass] = useState({
+  const [editingClassId, setEditingClassId] = useState(null);
+
+  const [editedClass, setEditedClass] = useState({
     name: "",
     coach: "",
     level: "",
@@ -30,39 +34,40 @@ export default function Classes() {
   });
 
   useEffect(() => {
-    fetchClasses();
-  }, []);
+    if (session?.user?.email) {
+      fetchClasses();
+    }
+  }, [session]);
 
   async function fetchClasses() {
-    const { data, error } = await supabase
+    const { data: classData, error: classError } = await supabase
       .from("Classes")
       .select("*")
       .order("id", { ascending: true });
 
-    if (error) {
-      console.error("Error fetching classes:", error);
-      return;
-    }
-const { data: enrollmentData, error: enrollmentError } = await supabase
-  .from("Enrollments")
-  .select("*");
+    const { data: enrollmentData, error: enrollmentError } = await supabase
+      .from("Enrollments")
+      .select("*");
 
-if (enrollmentError) {
-  console.error("Enrollment fetch error:", enrollmentError);
-}const { data: athleteData, error: athleteError } = await supabase
-  .from("Athletes")
-  .select("*");
+    const { data: athleteData, error: athleteError } = await supabase
+      .from("Athletes")
+      .select("*");
 
-if (athleteError) {
-  console.error("Athlete fetch error:", athleteError);
-}
-    setClasses(data || []);
+    const { data: userData, error: userError } = await supabase
+      .from("Users")
+      .select("role")
+      .eq("email", session.user.email)
+      .single();
+
+    if (classError) console.error("Class fetch error:", classError);
+    if (enrollmentError) console.error("Enrollment fetch error:", enrollmentError);
+    if (athleteError) console.error("Athlete fetch error:", athleteError);
+    if (userError) console.error("User role error:", userError);
+
+    setClasses(classData || []);
     setEnrollments(enrollmentData || []);
     setAthletes(athleteData || []);
-    
-if (athleteError) {
-  console.error("Athlete fetch error:", athleteError);
-}
+    setUserRole(userData?.role || "");
   }
 
   const filteredClasses = classes.filter((cls) =>
@@ -74,7 +79,14 @@ if (athleteError) {
   async function handleAddClass(e) {
     e.preventDefault();
 
-    if (!newClass.name || !newClass.coach || !newClass.level || !newClass.day || !newClass.time || !newClass.capacity) {
+    if (
+      !newClass.name ||
+      !newClass.coach ||
+      !newClass.level ||
+      !newClass.day ||
+      !newClass.time ||
+      !newClass.capacity
+    ) {
       return;
     }
 
@@ -99,10 +111,11 @@ if (athleteError) {
     }
 
     setClasses([...classes, data[0]]);
+
     await logActivity(
-  "Class Created",
-  `${newClass.name} was created`
-);
+      "Class Created",
+      `${newClass.name} was created`
+    );
 
     setNewClass({
       name: "",
@@ -114,108 +127,119 @@ if (athleteError) {
     });
   }
 
-async function handleDeleteClass(idToDelete) {
-  const classToDelete = classes.find(
-    (cls) => Number(cls.id) === Number(idToDelete)
-  );
+  async function handleDeleteClass(idToDelete) {
+    const classToDelete = classes.find(
+      (cls) => Number(cls.id) === Number(idToDelete)
+    );
 
-  const { error } = await supabase
-    .from("Classes")
-    .delete()
-    .eq("id", idToDelete);
+    const { error } = await supabase
+      .from("Classes")
+      .delete()
+      .eq("id", idToDelete);
 
-  if (error) {
-    console.error("Error deleting class:", error);
-    return;
+    if (error) {
+      console.error("Error deleting class:", error);
+      return;
+    }
+
+    setClasses(classes.filter((cls) => cls.id !== idToDelete));
+
+    await logActivity(
+      "Class Deleted",
+      `${classToDelete?.name || "A class"} was deleted`
+    );
   }
 
-  setClasses(classes.filter((cls) => cls.id !== idToDelete));
+  function handleStartEditClass(cls) {
+    setEditingClassId(cls.id);
 
-  await logActivity(
-    "Class Deleted",
-    `${classToDelete?.name || "A class"} was deleted`
-  );
-}
-
-function handleStartEditClass(cls) {
-  setEditingClassId(cls.id);
-
-  setEditedClass({
-    name: cls.name,
-    coach: cls.coach,
-    level: cls.level,
-    day: cls.day,
-    time: cls.time,
-    capacity: cls.capacity,
-  });
-}
-
-function handleCancelEditClass() {
-  setEditingClassId(null);
-
-  setEditedClass({
-    name: "",
-    coach: "",
-    level: "",
-    day: "",
-    time: "",
-    capacity: "",
-  });
-}
-
-async function handleSaveEditClass(id) {
-  const { data, error } = await supabase
-    .from("Classes")
-    .update({
-      name: editedClass.name,
-      coach: editedClass.coach,
-      level: editedClass.level,
-      day: editedClass.day,
-      time: editedClass.time,
-      capacity: Number(editedClass.capacity),
-    })
-    .eq("id", id)
-    .select();
-
-  if (error) {
-    console.error("Error updating class:", error);
-    return;
+    setEditedClass({
+      name: cls.name,
+      coach: cls.coach,
+      level: cls.level,
+      day: cls.day,
+      time: cls.time,
+      capacity: cls.capacity,
+    });
   }
 
-  setClasses(
-    classes.map((cls) =>
-      cls.id === id ? data[0] : cls
-    )
-  );
+  function handleCancelEditClass() {
+    setEditingClassId(null);
 
-  await logActivity(
-    "Class Updated",
-    `${editedClass.name} was updated`
-  );
+    setEditedClass({
+      name: "",
+      coach: "",
+      level: "",
+      day: "",
+      time: "",
+      capacity: "",
+    });
+  }
 
-  handleCancelEditClass();
-}
+  async function handleSaveEditClass(id) {
+    const { data, error } = await supabase
+      .from("Classes")
+      .update({
+        name: editedClass.name,
+        coach: editedClass.coach,
+        level: editedClass.level,
+        day: editedClass.day,
+        time: editedClass.time,
+        capacity: Number(editedClass.capacity),
+      })
+      .eq("id", id)
+      .select();
+
+    if (error) {
+      console.error("Error updating class:", error);
+      return;
+    }
+
+    setClasses(
+      classes.map((cls) =>
+        cls.id === id ? data[0] : cls
+      )
+    );
+
+    await logActivity(
+      "Class Updated",
+      `${editedClass.name} was updated`
+    );
+
+    handleCancelEditClass();
+  }
+
   function getClassEnrollments(classId) {
-  return enrollments.filter(
-    (enrollment) => enrollment.class_id === classId
-  );
-}
-function getAthleteName(athleteId) {
-  const athlete = athletes.find(
-    (athlete) => Number(athlete.id) === Number(athleteId)
-  );
+    return enrollments.filter(
+      (enrollment) => Number(enrollment.class_id) === Number(classId)
+    );
+  }
 
-  return athlete ? athlete.name : "Unknown Athlete";
-}
+  function getAthleteName(athleteId) {
+    const athlete = athletes.find(
+      (athlete) => Number(athlete.id) === Number(athleteId)
+    );
+
+    return athlete ? athlete.name : "Unknown Athlete";
+  }
+
   if (status === "loading") {
     return <p style={{ padding: "2rem" }}>Loading...</p>;
   }
 
   if (!session) {
+    return <p style={{ padding: "2rem" }}>Access Denied</p>;
+  }
+
+  if (userRole && userRole !== "admin" && userRole !== "coach") {
     return (
-      <div style={{ padding: "2rem" }}>
-        <h1>Access Denied</h1>
-        <p>You must be signed in to view this page.</p>
+      <div style={pageShell}>
+        <Sidebar activePage="classes" />
+
+        <main style={mainStyle}>
+          <h1>Access Denied</h1>
+          <p>This area is only available to coaches and admins.</p>
+        </main>
       </div>
     );
   }
@@ -224,10 +248,11 @@ function getAthleteName(athleteId) {
     <div style={pageShell}>
       <Sidebar activePage="classes" />
 
-      <main style={{ flex: 1, padding: "2rem" }}>
+      <main style={mainStyle}>
         <header style={headerStyle}>
           <div>
             <h1 style={{ margin: 0 }}>Classes</h1>
+
             <p style={{ color: "#aaa", marginTop: "0.5rem" }}>
               Manage class schedules, coaches, levels, and capacity.
             </p>
@@ -243,7 +268,9 @@ function getAthleteName(athleteId) {
             type="text"
             placeholder="Class name"
             value={newClass.name}
-            onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
+            onChange={(e) =>
+              setNewClass({ ...newClass, name: e.target.value })
+            }
             style={inputStyle}
           />
 
@@ -251,7 +278,9 @@ function getAthleteName(athleteId) {
             type="text"
             placeholder="Coach"
             value={newClass.coach}
-            onChange={(e) => setNewClass({ ...newClass, coach: e.target.value })}
+            onChange={(e) =>
+              setNewClass({ ...newClass, coach: e.target.value })
+            }
             style={inputStyle}
           />
 
@@ -259,7 +288,9 @@ function getAthleteName(athleteId) {
             type="text"
             placeholder="Level"
             value={newClass.level}
-            onChange={(e) => setNewClass({ ...newClass, level: e.target.value })}
+            onChange={(e) =>
+              setNewClass({ ...newClass, level: e.target.value })
+            }
             style={inputStyle}
           />
 
@@ -267,7 +298,9 @@ function getAthleteName(athleteId) {
             type="text"
             placeholder="Day"
             value={newClass.day}
-            onChange={(e) => setNewClass({ ...newClass, day: e.target.value })}
+            onChange={(e) =>
+              setNewClass({ ...newClass, day: e.target.value })
+            }
             style={inputStyle}
           />
 
@@ -275,7 +308,9 @@ function getAthleteName(athleteId) {
             type="text"
             placeholder="Time"
             value={newClass.time}
-            onChange={(e) => setNewClass({ ...newClass, time: e.target.value })}
+            onChange={(e) =>
+              setNewClass({ ...newClass, time: e.target.value })
+            }
             style={inputStyle}
           />
 
@@ -283,7 +318,9 @@ function getAthleteName(athleteId) {
             type="number"
             placeholder="Capacity"
             value={newClass.capacity}
-            onChange={(e) => setNewClass({ ...newClass, capacity: e.target.value })}
+            onChange={(e) =>
+              setNewClass({ ...newClass, capacity: e.target.value })
+            }
             style={inputStyle}
           />
 
@@ -308,122 +345,149 @@ function getAthleteName(athleteId) {
 
         <section style={gridStyle}>
           {filteredClasses.map((cls) => (
-            <div key={cls.id} style={cardStyle}>{editingClassId === cls.id ? (
-  <>
-    <input
-      value={editedClass.name}
-      onChange={(e) =>
-        setEditedClass({ ...editedClass, name: e.target.value })
-      }
-      style={inputStyle}
-    />
+            <div key={cls.id} style={cardStyle}>
+              {editingClassId === cls.id ? (
+                <>
+                  <input
+                    value={editedClass.name}
+                    onChange={(e) =>
+                      setEditedClass({
+                        ...editedClass,
+                        name: e.target.value,
+                      })
+                    }
+                    style={inputStyle}
+                  />
 
-    <input
-      value={editedClass.coach}
-      onChange={(e) =>
-        setEditedClass({ ...editedClass, coach: e.target.value })
-      }
-      style={{ ...inputStyle, marginTop: "0.75rem" }}
-    />
+                  <input
+                    value={editedClass.coach}
+                    onChange={(e) =>
+                      setEditedClass({
+                        ...editedClass,
+                        coach: e.target.value,
+                      })
+                    }
+                    style={{ ...inputStyle, marginTop: "0.75rem" }}
+                  />
 
-    <input
-      value={editedClass.level}
-      onChange={(e) =>
-        setEditedClass({ ...editedClass, level: e.target.value })
-      }
-      style={{ ...inputStyle, marginTop: "0.75rem" }}
-    />
+                  <input
+                    value={editedClass.level}
+                    onChange={(e) =>
+                      setEditedClass({
+                        ...editedClass,
+                        level: e.target.value,
+                      })
+                    }
+                    style={{ ...inputStyle, marginTop: "0.75rem" }}
+                  />
 
-    <input
-      value={editedClass.day}
-      onChange={(e) =>
-        setEditedClass({ ...editedClass, day: e.target.value })
-      }
-      style={{ ...inputStyle, marginTop: "0.75rem" }}
-    />
+                  <input
+                    value={editedClass.day}
+                    onChange={(e) =>
+                      setEditedClass({
+                        ...editedClass,
+                        day: e.target.value,
+                      })
+                    }
+                    style={{ ...inputStyle, marginTop: "0.75rem" }}
+                  />
 
-    <input
-      value={editedClass.time}
-      onChange={(e) =>
-        setEditedClass({ ...editedClass, time: e.target.value })
-      }
-      style={{ ...inputStyle, marginTop: "0.75rem" }}
-    />
+                  <input
+                    value={editedClass.time}
+                    onChange={(e) =>
+                      setEditedClass({
+                        ...editedClass,
+                        time: e.target.value,
+                      })
+                    }
+                    style={{ ...inputStyle, marginTop: "0.75rem" }}
+                  />
 
-    <input
-      type="number"
-      value={editedClass.capacity}
-      onChange={(e) =>
-        setEditedClass({ ...editedClass, capacity: e.target.value })
-      }
-      style={{ ...inputStyle, marginTop: "0.75rem" }}
-    />
+                  <input
+                    type="number"
+                    value={editedClass.capacity}
+                    onChange={(e) =>
+                      setEditedClass({
+                        ...editedClass,
+                        capacity: e.target.value,
+                      })
+                    }
+                    style={{ ...inputStyle, marginTop: "0.75rem" }}
+                  />
 
-    <div style={{ display: "flex", gap: "0.75rem", marginTop: "1rem" }}>
-      <button
-        onClick={() => handleSaveEditClass(cls.id)}
-        style={goldButton}
-      >
-        Save
-      </button>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "0.75rem",
+                      marginTop: "1rem",
+                    }}
+                  >
+                    <button
+                      onClick={() => handleSaveEditClass(cls.id)}
+                      style={goldButton}
+                    >
+                      Save
+                    </button>
 
-      <button
-        onClick={handleCancelEditClass}
-        style={darkButton}
-      >
-        Cancel
-      </button>
-    </div>
-  </>
-) : (
-  <>
-    <h2 style={{ marginTop: 0, color: "#d4af37" }}>{cls.name}</h2>
+                    <button
+                      onClick={handleCancelEditClass}
+                      style={darkButton}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 style={{ marginTop: 0, color: "#d4af37" }}>
+                    {cls.name}
+                  </h2>
 
-    <p><strong>Coach:</strong> {cls.coach}</p>
-    <p><strong>Level:</strong> {cls.level}</p>
-    <p><strong>Day:</strong> {cls.day}</p>
-    <p><strong>Time:</strong> {cls.time}</p>
-    <p><strong>Capacity:</strong> {cls.capacity}</p>
+                  <p><strong>Coach:</strong> {cls.coach}</p>
+                  <p><strong>Level:</strong> {cls.level}</p>
+                  <p><strong>Day:</strong> {cls.day}</p>
+                  <p><strong>Time:</strong> {cls.time}</p>
+                  <p><strong>Capacity:</strong> {cls.capacity}</p>
 
-    <div style={{ marginTop: "1rem" }}>
-      <strong>Enrolled Athletes:</strong>
+                  <div style={{ marginTop: "1rem" }}>
+                    <strong>Enrolled Athletes:</strong>
 
-      <p>
-        Count: {getClassEnrollments(cls.id).length}
-      </p>
+                    <p>
+                      Count: {getClassEnrollments(cls.id).length}
+                    </p>
 
-      <ul style={{ paddingLeft: "1.2rem" }}>
-        {getClassEnrollments(cls.id).map((enrollment) => (
-          <li key={enrollment.id}>
-            {getAthleteName(enrollment.athlete_id)}
-          </li>
-        ))}
-      </ul>
-    </div>
+                    <ul style={{ paddingLeft: "1.2rem" }}>
+                      {getClassEnrollments(cls.id).map((enrollment) => (
+                        <li key={enrollment.id}>
+                          {getAthleteName(enrollment.athlete_id)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
 
-    <div style={cardFooterStyle}>
-      <span style={activeBadgeStyle}>
-        {cls.status}
-      </span>
+                  <div style={cardFooterStyle}>
+                    <span style={activeBadgeStyle}>
+                      {cls.status}
+                    </span>
 
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        <button
-          onClick={() => handleStartEditClass(cls)}
-          style={darkButton}
-        >
-          Edit
-        </button>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <button
+                        onClick={() => handleStartEditClass(cls)}
+                        style={darkButton}
+                      >
+                        Edit
+                      </button>
 
-        <button
-          onClick={() => handleDeleteClass(cls.id)}
-          style={dangerButton}
-        >
-          Delete
-        </button>
-      </div>
-    </div>
-  </>
-)}
+                      <button
+                        onClick={() => handleDeleteClass(cls.id)}
+                        style={dangerButton}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </section>
@@ -438,6 +502,11 @@ const pageShell = {
   color: "#f5f5f5",
   fontFamily: "Arial, sans-serif",
   display: "flex",
+};
+
+const mainStyle = {
+  flex: 1,
+  padding: "2rem",
 };
 
 const headerStyle = {
