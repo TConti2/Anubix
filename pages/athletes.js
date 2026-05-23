@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getSession, useSession, signOut } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
 import { logActivity } from "../lib/ActivityLogger";
+import Sidebar from "../components/Sidebar";
 
 export default function Athletes() {
   const { data: session, status } = useSession();
@@ -214,18 +215,7 @@ export default function Athletes() {
 
   return (
     <div style={pageShell}>
-      <aside style={sidebarStyle}>
-        <h2 style={{ color: "#d4af37", marginBottom: "2rem" }}>Anubix</h2>
-
-        <nav style={{ display: "grid", gap: "1rem", color: "#cfcfcf" }}>
-          <a href="/dashboard" style={navLink}>Dashboard</a>
-          <a href="/athletes" style={{ ...navLink, color: "#d4af37" }}>Athletes</a>
-          <a href="/classes" style={navLink}>Classes</a>
-          <a href="/enrollments" style={navLink}>Enrollments</a>
-          <a href="/attendance" style={navLink}>Attendance</a>
-          <span>Payments</span>
-        </nav>
-      </aside>
+     <Sidebar activePage="athletes" />
 
       <main style={{ flex: 1, padding: "2rem" }}>
         <header style={headerStyle}>
@@ -388,13 +378,6 @@ const pageShell = {
   display: "flex",
 };
 
-const sidebarStyle = {
-  width: "240px",
-  background: "#111118",
-  borderRight: "1px solid #2a2a35",
-  padding: "1.5rem",
-};
-
 const headerStyle = {
   display: "flex",
   justifyContent: "space-between",
@@ -442,11 +425,6 @@ const activeBadgeStyle = {
   color: "#7ee787",
   fontSize: "0.85rem",
   fontWeight: "bold",
-};
-
-const navLink = {
-  color: "#cfcfcf",
-  textDecoration: "none",
 };
 
 const goldButton = {

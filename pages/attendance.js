@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getSession, useSession } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
 import { logActivity } from "../lib/activityLogger";
+import Sidebar from "../components/Sidebar";
 
 export default function Attendance() {
   const { data: session, status } = useSession();
@@ -39,6 +40,8 @@ export default function Attendance() {
   async function handleAttendance(e) {
     e.preventDefault();
 
+    if (!selectedAthlete || !selectedClass) return;
+
     const attendanceRecord = {
       athlete_id: Number(selectedAthlete),
       class_id: Number(selectedClass),
@@ -58,13 +61,15 @@ export default function Attendance() {
     }
 
     setAttendance([...attendance, data[0]]);
-const athleteName = getAthleteName(Number(selectedAthlete));
-const className = getClassName(Number(selectedClass));
 
-await logActivity(
-  "Attendance Marked",
-  `${athleteName} marked ${selectedStatus} for ${className}`
-);
+    const athleteName = getAthleteName(Number(selectedAthlete));
+    const className = getClassName(Number(selectedClass));
+
+    await logActivity(
+      "Attendance Marked",
+      `${athleteName} marked ${selectedStatus} for ${className}`
+    );
+
     setSelectedAthlete("");
     setSelectedClass("");
     setSelectedStatus("Present");
@@ -87,104 +92,103 @@ await logActivity(
   }
 
   if (status === "loading") {
-    return <p>Loading...</p>;
+    return <p style={{ padding: "2rem" }}>Loading...</p>;
   }
 
   if (!session) {
-    return <p>Access Denied</p>;
+    return <p style={{ padding: "2rem" }}>Access Denied</p>;
   }
 
   return (
-    <div style={pageStyle}>
-      <h1 style={{ color: "#d4af37" }}>Attendance</h1>
+    <div style={pageShell}>
+      <Sidebar activePage="attendance" />
 
-      <nav style={{ display: "flex", gap: "1rem", marginBottom: "2rem" }}>
-        <a href="/dashboard" style={navLink}>Dashboard</a>
-        <a href="/athletes" style={navLink}>Athletes</a>
-        <a href="/classes" style={navLink}>Classes</a>
-        <a href="/enrollments" style={navLink}>Enrollments</a>
-        <a href="/attendance" style={{ ...navLink, color: "#d4af37" }}>
-          Attendance
-        </a>
-      </nav>
+      <main style={mainStyle}>
+        <h1 style={{ color: "#d4af37" }}>Attendance</h1>
 
-      <form onSubmit={handleAttendance} style={formStyle}>
-        <select
-          value={selectedAthlete}
-          onChange={(e) => setSelectedAthlete(e.target.value)}
-          style={inputStyle}
-        >
-          <option value="">Select Athlete</option>
+        <form onSubmit={handleAttendance} style={formStyle}>
+          <select
+            value={selectedAthlete}
+            onChange={(e) => setSelectedAthlete(e.target.value)}
+            style={inputStyle}
+          >
+            <option value="">Select Athlete</option>
 
-          {athletes.map((athlete) => (
-            <option key={athlete.id} value={athlete.id}>
-              {athlete.name}
-            </option>
+            {athletes.map((athlete) => (
+              <option key={athlete.id} value={athlete.id}>
+                {athlete.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedClass}
+            onChange={(e) => setSelectedClass(e.target.value)}
+            style={inputStyle}
+          >
+            <option value="">Select Class</option>
+
+            {classes.map((cls) => (
+              <option key={cls.id} value={cls.id}>
+                {cls.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            style={inputStyle}
+          >
+            <option value="Present">Present</option>
+            <option value="Absent">Absent</option>
+            <option value="Late">Late</option>
+            <option value="Excused">Excused</option>
+          </select>
+
+          <button type="submit" style={buttonStyle}>
+            Mark Attendance
+          </button>
+        </form>
+
+        <div style={{ marginTop: "2rem" }}>
+          {attendance.map((record) => (
+            <div key={record.id} style={cardStyle}>
+              <h3 style={{ color: "#d4af37" }}>
+                {getAthleteName(record.athlete_id)}
+              </h3>
+
+              <p>
+                <strong>Class:</strong>{" "}
+                {getClassName(record.class_id)}
+              </p>
+
+              <p>
+                <strong>Date:</strong> {record.date}
+              </p>
+
+              <p>
+                <strong>Status:</strong> {record.status}
+              </p>
+            </div>
           ))}
-        </select>
-
-        <select
-          value={selectedClass}
-          onChange={(e) => setSelectedClass(e.target.value)}
-          style={inputStyle}
-        >
-          <option value="">Select Class</option>
-
-          {classes.map((cls) => (
-            <option key={cls.id} value={cls.id}>
-              {cls.name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
-          style={inputStyle}
-        >
-          <option value="Present">Present</option>
-          <option value="Absent">Absent</option>
-          <option value="Late">Late</option>
-          <option value="Excused">Excused</option>
-        </select>
-
-        <button type="submit" style={buttonStyle}>
-          Mark Attendance
-        </button>
-      </form>
-
-      <div style={{ marginTop: "2rem" }}>
-        {attendance.map((record) => (
-          <div key={record.id} style={cardStyle}>
-            <h3 style={{ color: "#d4af37" }}>
-              {getAthleteName(record.athlete_id)}
-            </h3>
-
-            <p>
-              <strong>Class:</strong>{" "}
-              {getClassName(record.class_id)}
-            </p>
-
-            <p>
-              <strong>Date:</strong> {record.date}
-            </p>
-
-            <p>
-              <strong>Status:</strong> {record.status}
-            </p>
-          </div>
-        ))}
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
 
-const pageStyle = {
+const pageShell = {
   minHeight: "100vh",
   background: "#0b0b0f",
   color: "#f5f5f5",
-  padding: "2rem",
   fontFamily: "Arial, sans-serif",
+  display: "flex",
+};
+
+const mainStyle = {
+  flex: 1,
+  padding: "2rem",
 };
 
 const formStyle = {
@@ -217,12 +221,6 @@ const cardStyle = {
   borderRadius: "16px",
   padding: "1rem",
   marginBottom: "1rem",
-};
-
-const navLink = {
-  color: "#cfcfcf",
-  textDecoration: "none",
-  fontWeight: "bold",
 };
 
 export async function getServerSideProps(context) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getSession, useSession } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
 import { logActivity } from "../lib/ActivityLogger";
+import Sidebar from "../components/Sidebar";
 
 export default function Enrollments() {
   const { data: session, status } = useSession();
@@ -149,18 +150,12 @@ async function handleEnrollment(e) {
     return <p style={pageStyle}>Access Denied</p>;
   }
 
-  return (
-    <div style={pageStyle}>
-      <h1 style={{ color: "#d4af37" }}>Enrollments</h1>
+ return (
+  <div style={pageShell}>
+    <Sidebar activePage="enrollments" />
 
-      <nav style={{ display: "flex", gap: "1rem", marginBottom: "2rem" }}>
-  <a href="/dashboard" style={navLink}>Dashboard</a>
-  <a href="/athletes" style={navLink}>Athletes</a>
-  <a href="/classes" style={navLink}>Classes</a>
-  <a href="/attendance" style={navLink}>Attendance</a>
-  <a href="/enrollments" style={{ ...navLink, color: "#d4af37" }}>Enrollments</a>
-  
-</nav>
+    <main style={mainStyle}>
+      <h1 style={{ color: "#d4af37" }}>Enrollments</h1>
 
       <form onSubmit={handleEnrollment} style={formStyle}>
         <select
@@ -230,6 +225,7 @@ async function handleEnrollment(e) {
           </div>
         ))}
       </div>
+      </main>
     </div>
   );
 }
@@ -246,6 +242,19 @@ const formStyle = {
   display: "grid",
   gap: "1rem",
   maxWidth: "400px",
+};
+
+const pageShell = {
+  minHeight: "100vh",
+  background: "#0b0b0f",
+  color: "#f5f5f5",
+  fontFamily: "Arial, sans-serif",
+  display: "flex",
+};
+
+const mainStyle = {
+  flex: 1,
+  padding: "2rem",
 };
 
 const inputStyle = {
@@ -283,11 +292,6 @@ const cardStyle = {
   borderRadius: "16px",
   padding: "1rem",
   marginBottom: "1rem",
-};
-const navLink = {
-  color: "#cfcfcf",
-  textDecoration: "none",
-  fontWeight: "bold",
 };
 
 export async function getServerSideProps(context) {
