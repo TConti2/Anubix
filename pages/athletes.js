@@ -104,18 +104,27 @@ export default function Athletes() {
   }
 
   async function handleDeleteAthlete(idToDelete) {
-    const { error } = await supabase
-      .from("Athletes")
-      .delete()
-      .eq("id", idToDelete);
+  const athleteToDelete = athletes.find(
+    (athlete) => Number(athlete.id) === Number(idToDelete)
+  );
 
-    if (error) {
-      console.error("Error deleting athlete:", error);
-      return;
-    }
+  const { error } = await supabase
+    .from("Athletes")
+    .delete()
+    .eq("id", idToDelete);
 
-    setAthletes(athletes.filter((athlete) => athlete.id !== idToDelete));
+  if (error) {
+    console.error("Error deleting athlete:", error);
+    return;
   }
+
+  setAthletes(athletes.filter((athlete) => athlete.id !== idToDelete));
+
+  await logActivity(
+    "Athlete Deleted",
+    `${athleteToDelete?.name || "An athlete"} was deleted`
+  );
+}
 
   function handleStartEdit(index) {
     setEditingIndex(index);
@@ -150,6 +159,10 @@ export default function Athletes() {
     );
 
     setAthletes(updatedAthletes);
+    await logActivity(
+  "Athlete Updated",
+  `${editedAthlete.name} profile was updated`
+);
 
     setEditingIndex(null);
 

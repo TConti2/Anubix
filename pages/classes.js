@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSession, useSession, signOut } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
-import { logActivity } from "../lib/activityLogger";
+import { logActivity } from "../lib/ActivityLogger";
 
 export default function Classes() {
   const { data: session, status } = useSession();
@@ -10,6 +10,16 @@ export default function Classes() {
   const [enrollments, setEnrollments] = useState([]);
   const [athletes, setAthletes] = useState([]);
   const [newClass, setNewClass] = useState({
+    name: "",
+    coach: "",
+    level: "",
+    day: "",
+    time: "",
+    capacity: "",
+  });
+  const[editingClassId, setEditingClassId] = useState(null);
+
+  const[editedClass, setEditedClass] = useState({
     name: "",
     coach: "",
     level: "",
@@ -103,19 +113,87 @@ if (athleteError) {
     });
   }
 
-  async function handleDeleteClass(idToDelete) {
-    const { error } = await supabase
-      .from("Classes")
-      .delete()
-      .eq("id", idToDelete);
+async function handleDeleteClass(idToDelete) {
+  const classToDelete = classes.find(
+    (cls) => Number(cls.id) === Number(idToDelete)
+  );
 
-    if (error) {
-      console.error("Error deleting class:", error);
-      return;
-    }
+  const { error } = await supabase
+    .from("Classes")
+    .delete()
+    .eq("id", idToDelete);
 
-    setClasses(classes.filter((cls) => cls.id !== idToDelete));
+  if (error) {
+    console.error("Error deleting class:", error);
+    return;
   }
+
+  setClasses(classes.filter((cls) => cls.id !== idToDelete));
+
+  await logActivity(
+    "Class Deleted",
+    `${classToDelete?.name || "A class"} was deleted`
+  );
+}
+
+function handleStartEditClass(cls) {
+  setEditingClassId(cls.id);
+
+  setEditedClass({
+    name: cls.name,
+    coach: cls.coach,
+    level: cls.level,
+    day: cls.day,
+    time: cls.time,
+    capacity: cls.capacity,
+  });
+}
+
+function handleCancelEditClass() {
+  setEditingClassId(null);
+
+  setEditedClass({
+    name: "",
+    coach: "",
+    level: "",
+    day: "",
+    time: "",
+    capacity: "",
+  });
+}
+
+async function handleSaveEditClass(id) {
+  const { data, error } = await supabase
+    .from("Classes")
+    .update({
+      name: editedClass.name,
+      coach: editedClass.coach,
+      level: editedClass.level,
+      day: editedClass.day,
+      time: editedClass.time,
+      capacity: Number(editedClass.capacity),
+    })
+    .eq("id", id)
+    .select();
+
+  if (error) {
+    console.error("Error updating class:", error);
+    return;
+  }
+
+  setClasses(
+    classes.map((cls) =>
+      cls.id === id ? data[0] : cls
+    )
+  );
+
+  await logActivity(
+    "Class Updated",
+    `${editedClass.name} was updated`
+  );
+
+  handleCancelEditClass();
+}
   function getClassEnrollments(classId) {
   return enrollments.filter(
     (enrollment) => enrollment.class_id === classId
@@ -241,29 +319,122 @@ function getAthleteName(athleteId) {
 
         <section style={gridStyle}>
           {filteredClasses.map((cls) => (
-            <div key={cls.id} style={cardStyle}>
-              <h2 style={{ marginTop: 0, color: "#d4af37" }}>{cls.name}</h2>
-              <p><strong>Coach:</strong> {cls.coach}</p>
-<p><strong>Level:</strong> {cls.level}</p>
-<p><strong>Day:</strong> {cls.day}</p>
-<p><strong>Time:</strong> {cls.time}</p>
-<p><strong>Capacity:</strong> {cls.capacity}</p>
+            <div key={cls.id} style={cardStyle}>{editingClassId === cls.id ? (
+  <>
+    <input
+      value={editedClass.name}
+      onChange={(e) =>
+        setEditedClass({ ...editedClass, name: e.target.value })
+      }
+      style={inputStyle}
+    />
 
-<div style={{ marginTop: "1rem" }}>
-  <strong>Enrolled Athletes:</strong>
+    <input
+      value={editedClass.coach}
+      onChange={(e) =>
+        setEditedClass({ ...editedClass, coach: e.target.value })
+      }
+      style={{ ...inputStyle, marginTop: "0.75rem" }}
+    />
 
-  <p>
-    Count: {getClassEnrollments(cls.id).length}
-  </p>
+    <input
+      value={editedClass.level}
+      onChange={(e) =>
+        setEditedClass({ ...editedClass, level: e.target.value })
+      }
+      style={{ ...inputStyle, marginTop: "0.75rem" }}
+    />
 
-  <ul style={{ paddingLeft: "1.2rem" }}>
-    {getClassEnrollments(cls.id).map((enrollment) => (
-      <li key={enrollment.id}>
-        {getAthleteName(enrollment.athlete_id)}
-      </li>
-    ))}
-  </ul>
-</div>
+    <input
+      value={editedClass.day}
+      onChange={(e) =>
+        setEditedClass({ ...editedClass, day: e.target.value })
+      }
+      style={{ ...inputStyle, marginTop: "0.75rem" }}
+    />
+
+    <input
+      value={editedClass.time}
+      onChange={(e) =>
+        setEditedClass({ ...editedClass, time: e.target.value })
+      }
+      style={{ ...inputStyle, marginTop: "0.75rem" }}
+    />
+
+    <input
+      type="number"
+      value={editedClass.capacity}
+      onChange={(e) =>
+        setEditedClass({ ...editedClass, capacity: e.target.value })
+      }
+      style={{ ...inputStyle, marginTop: "0.75rem" }}
+    />
+
+    <div style={{ display: "flex", gap: "0.75rem", marginTop: "1rem" }}>
+      <button
+        onClick={() => handleSaveEditClass(cls.id)}
+        style={goldButton}
+      >
+        Save
+      </button>
+
+      <button
+        onClick={handleCancelEditClass}
+        style={darkButton}
+      >
+        Cancel
+      </button>
+    </div>
+  </>
+) : (
+  <>
+    <h2 style={{ marginTop: 0, color: "#d4af37" }}>{cls.name}</h2>
+
+    <p><strong>Coach:</strong> {cls.coach}</p>
+    <p><strong>Level:</strong> {cls.level}</p>
+    <p><strong>Day:</strong> {cls.day}</p>
+    <p><strong>Time:</strong> {cls.time}</p>
+    <p><strong>Capacity:</strong> {cls.capacity}</p>
+
+    <div style={{ marginTop: "1rem" }}>
+      <strong>Enrolled Athletes:</strong>
+
+      <p>
+        Count: {getClassEnrollments(cls.id).length}
+      </p>
+
+      <ul style={{ paddingLeft: "1.2rem" }}>
+        {getClassEnrollments(cls.id).map((enrollment) => (
+          <li key={enrollment.id}>
+            {getAthleteName(enrollment.athlete_id)}
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <div style={cardFooterStyle}>
+      <span style={activeBadgeStyle}>
+        {cls.status}
+      </span>
+
+      <div style={{ display: "flex", gap: "0.5rem" }}>
+        <button
+          onClick={() => handleStartEditClass(cls)}
+          style={darkButton}
+        >
+          Edit
+        </button>
+
+        <button
+          onClick={() => handleDeleteClass(cls.id)}
+          style={dangerButton}
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </>
+)}
             </div>
           ))}
         </section>
@@ -355,6 +526,16 @@ const dangerButton = {
   background: "#3b1111",
   color: "#ffb4b4",
   border: "1px solid #7f1d1d",
+  borderRadius: "10px",
+  padding: "0.6rem 0.9rem",
+  cursor: "pointer",
+  fontWeight: "bold",
+};
+
+const darkButton = {
+  background: "#1f1f2b",
+  color: "#f5f5f5",
+  border: "1px solid #2f2f3d",
   borderRadius: "10px",
   padding: "0.6rem 0.9rem",
   cursor: "pointer",
