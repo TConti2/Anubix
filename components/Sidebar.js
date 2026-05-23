@@ -32,6 +32,7 @@ export default function Sidebar({ activePage = "" }) {
 
   const links = [
     { label: "Dashboard", href: "/dashboard", key: "dashboard" },
+    { label: "Activity", href: "/activity", key: "activity" },
     { label: "My Progress", href: "/my-progress", key: "my-progress" },
     ...(isAdmin || isCoach
       ? [

@@ -2,7 +2,8 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/dashboard": "pages/dashboard.js",
-  "/my-progress": "pages/my-progress.js",
-  "/api/auth/[...nextauth]": "pages/api/auth/[...nextauth].js"
+  "/athletes": "pages/athletes.js",
+  "/api/auth/[...nextauth]": "pages/api/auth/[...nextauth].js",
+  "/activity": "pages/activity.js",
+  "/dashboard": "pages/dashboard.js"
 }

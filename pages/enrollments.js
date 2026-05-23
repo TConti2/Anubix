@@ -6,15 +6,20 @@ import Sidebar from "../components/Sidebar";
 
 export default function Enrollments() {
   const { data: session, status } = useSession();
+
   const [athletes, setAthletes] = useState([]);
   const [classes, setClasses] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
+  const [userRole, setUserRole] = useState("");
+
   const [selectedAthlete, setSelectedAthlete] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (session?.user?.email) {
+      fetchData();
+    }
+  }, [session]);
 
   async function fetchData() {
     const { data: athleteData, error: athleteError } = await supabase
@@ -29,220 +34,245 @@ export default function Enrollments() {
       .from("Enrollments")
       .select("*");
 
+    const { data: userData, error: userError } = await supabase
+      .from("Users")
+      .select("role")
+      .eq("email", session.user.email)
+      .single();
+
     if (athleteError) console.error("Athlete fetch error:", athleteError);
     if (classError) console.error("Class fetch error:", classError);
     if (enrollmentError) console.error("Enrollment fetch error:", enrollmentError);
+    if (userError) console.error("User role error:", userError);
 
     setAthletes(athleteData || []);
     setClasses(classData || []);
     setEnrollments(enrollmentData || []);
+    setUserRole(userData?.role || "");
   }
-
-async function handleEnrollment(e) {
-  e.preventDefault();
-
-  if (!selectedAthlete || !selectedClass) return;
-
-  const existingEnrollment = enrollments.find(
-    (enrollment) =>
-      Number(enrollment.athlete_id) === Number(selectedAthlete) &&
-      Number(enrollment.class_id) === Number(selectedClass)
-  );
-
-  if (existingEnrollment) {
-    alert("This athlete is already enrolled in that class.");
-    return;
-  }
-
-  const selectedClassData = classes.find(
-    (cls) => Number(cls.id) === Number(selectedClass)
-  );
-
-  const currentEnrollmentCount = enrollments.filter(
-    (enrollment) => Number(enrollment.class_id) === Number(selectedClass)
-  ).length;
-
-  if (selectedClassData && currentEnrollmentCount >= Number(selectedClassData.capacity)) {
-    alert("This class is full.");
-    return;
-  }
-
-  const enrollment = {
-    athlete_id: Number(selectedAthlete),
-    class_id: Number(selectedClass),
-    status: "Active",
-  };
-
-  const { data, error } = await supabase
-    .from("Enrollments")
-    .insert([enrollment])
-    .select();
-
-  if (error) {
-    console.error("Error adding enrollment:", error);
-    return;
-  }
-
-  setEnrollments([...enrollments, data[0]]);
-
-  await logActivity(
-    "Enrollment Created",
-    `${getAthleteName(Number(selectedAthlete))} enrolled in ${getClassName(Number(selectedClass))}`
-  );
-
-  setSelectedAthlete("");
-  setSelectedClass("");
-}
-
- async function handleDeleteEnrollment(idToDelete) {
-  const enrollmentToDelete = enrollments.find(
-    (enrollment) => Number(enrollment.id) === Number(idToDelete)
-  );
-
-  const athleteName = enrollmentToDelete
-    ? getAthleteName(enrollmentToDelete.athlete_id)
-    : "An athlete";
-
-  const className = enrollmentToDelete
-    ? getClassName(enrollmentToDelete.class_id)
-    : "a class";
-
-  const { error } = await supabase
-    .from("Enrollments")
-    .delete()
-    .eq("id", idToDelete);
-
-  if (error) {
-    console.error("Error deleting enrollment:", error);
-    function getClassEnrollmentCount(classId) {
-  return enrollments.filter(
-    (enrollment) => Number(enrollment.class_id) === Number(classId)
-  ).length;
-}
-    return;
-  }
-
-  setEnrollments(
-    enrollments.filter((enrollment) => enrollment.id !== idToDelete)
-  );
-
-  await logActivity(
-    "Enrollment Removed",
-    `${athleteName} was removed from ${className}`
-  );
-}
 
   function getAthleteName(id) {
-    const athlete = athletes.find((a) => a.id === id);
+    const athlete = athletes.find(
+      (a) => Number(a.id) === Number(id)
+    );
+
     return athlete ? athlete.name : "Unknown Athlete";
   }
 
   function getClassName(id) {
-    const cls = classes.find((c) => c.id === id);
+    const cls = classes.find(
+      (c) => Number(c.id) === Number(id)
+    );
+
     return cls ? cls.name : "Unknown Class";
   }
 
+  function getClassEnrollmentCount(classId) {
+    return enrollments.filter(
+      (enrollment) =>
+        Number(enrollment.class_id) === Number(classId)
+    ).length;
+  }
+
+  async function handleEnrollment(e) {
+    e.preventDefault();
+
+    if (!selectedAthlete || !selectedClass) return;
+
+    const existingEnrollment = enrollments.find(
+      (enrollment) =>
+        Number(enrollment.athlete_id) === Number(selectedAthlete) &&
+        Number(enrollment.class_id) === Number(selectedClass)
+    );
+
+    if (existingEnrollment) {
+      alert("This athlete is already enrolled in that class.");
+      return;
+    }
+
+    const selectedClassData = classes.find(
+      (cls) => Number(cls.id) === Number(selectedClass)
+    );
+
+    const currentEnrollmentCount = getClassEnrollmentCount(
+      Number(selectedClass)
+    );
+
+    if (
+      selectedClassData &&
+      currentEnrollmentCount >= Number(selectedClassData.capacity)
+    ) {
+      alert("This class is full.");
+      return;
+    }
+
+    const enrollment = {
+      athlete_id: Number(selectedAthlete),
+      class_id: Number(selectedClass),
+      status: "Active",
+    };
+
+    const { data, error } = await supabase
+      .from("Enrollments")
+      .insert([enrollment])
+      .select();
+
+    if (error) {
+      console.error("Error adding enrollment:", error);
+      return;
+    }
+
+    setEnrollments([...enrollments, data[0]]);
+
+    await logActivity(
+      "Enrollment Created",
+      `${getAthleteName(Number(selectedAthlete))} enrolled in ${getClassName(Number(selectedClass))}`
+    );
+
+    setSelectedAthlete("");
+    setSelectedClass("");
+  }
+
+  async function handleDeleteEnrollment(idToDelete) {
+    const enrollmentToDelete = enrollments.find(
+      (enrollment) => Number(enrollment.id) === Number(idToDelete)
+    );
+
+    const athleteName = enrollmentToDelete
+      ? getAthleteName(enrollmentToDelete.athlete_id)
+      : "An athlete";
+
+    const className = enrollmentToDelete
+      ? getClassName(enrollmentToDelete.class_id)
+      : "a class";
+
+    const { error } = await supabase
+      .from("Enrollments")
+      .delete()
+      .eq("id", idToDelete);
+
+    if (error) {
+      console.error("Error deleting enrollment:", error);
+      return;
+    }
+
+    setEnrollments(
+      enrollments.filter(
+        (enrollment) => enrollment.id !== idToDelete
+      )
+    );
+
+    await logActivity(
+      "Enrollment Removed",
+      `${athleteName} was removed from ${className}`
+    );
+  }
+
   if (status === "loading") {
-    return <p style={pageStyle}>Loading...</p>;
+    return <p style={{ padding: "2rem" }}>Loading...</p>;
   }
 
   if (!session) {
-    return <p style={pageStyle}>Access Denied</p>;
+    return <p style={{ padding: "2rem" }}>Access Denied</p>;
   }
 
- return (
-  <div style={pageShell}>
-    <Sidebar activePage="enrollments" />
+  if (userRole && userRole !== "admin" && userRole !== "coach") {
+    return (
+      <div style={pageShell}>
+        <Sidebar activePage="enrollments" />
 
-    <main style={mainStyle}>
-      <h1 style={{ color: "#d4af37" }}>Enrollments</h1>
-
-      <form onSubmit={handleEnrollment} style={formStyle}>
-        <select
-          value={selectedAthlete}
-          onChange={(e) => setSelectedAthlete(e.target.value)}
-          style={inputStyle}
-        >
-          <option value="">Select Athlete</option>
-
-          {athletes.map((athlete) => (
-            <option key={athlete.id} value={athlete.id}>
-              {athlete.name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={selectedClass}
-          onChange={(e) => setSelectedClass(e.target.value)}
-          style={inputStyle}
-        >
-          <option value="">Select Class</option>
-
-          {classes.map((cls) => {
-  const count = getClassEnrollmentCount(cls.id);
-  const isFull = count >= Number(cls.capacity);
-  function getClassEnrollmentCount(classId) {
-  return enrollments.filter(
-    (enrollment) =>
-      Number(enrollment.class_id) === Number(classId)
-  ).length;
-}
+        <main style={mainStyle}>
+          <h1>Access Denied</h1>
+          <p>This area is only available to coaches and admins.</p>
+        </main>
+      </div>
+    );
+  }
 
   return (
-    <option key={cls.id} value={cls.id}>
-      {cls.name} — {count}/{cls.capacity} {isFull ? "(Full)" : ""}
-    </option>
-  );
-})}
-        </select>
+    <div style={pageShell}>
+      <Sidebar activePage="enrollments" />
 
-        <button type="submit" style={buttonStyle}>
-          Enroll Athlete
-        </button>
-      </form>
+      <main style={mainStyle}>
+        <h1 style={{ color: "#d4af37" }}>Enrollments</h1>
 
-      <div style={{ marginTop: "2rem" }}>
-        {enrollments.map((enrollment) => (
-          <div key={enrollment.id} style={cardStyle}>
-            <h3 style={{ color: "#d4af37" }}>
-              {getAthleteName(enrollment.athlete_id)}
-            </h3>
+        <form onSubmit={handleEnrollment} style={formStyle}>
+          <select
+            value={selectedAthlete}
+            onChange={(e) =>
+              setSelectedAthlete(e.target.value)
+            }
+            style={inputStyle}
+          >
+            <option value="">Select Athlete</option>
 
-            <p>
-              Enrolled In:{" "}
-              <strong>{getClassName(enrollment.class_id)}</strong>
-            </p>
+            {athletes.map((athlete) => (
+              <option key={athlete.id} value={athlete.id}>
+                {athlete.name}
+              </option>
+            ))}
+          </select>
 
-            <p>Status: {enrollment.status}</p>
+          <select
+            value={selectedClass}
+            onChange={(e) =>
+              setSelectedClass(e.target.value)
+            }
+            style={inputStyle}
+          >
+            <option value="">Select Class</option>
 
-            <button
-              onClick={() => handleDeleteEnrollment(enrollment.id)}
-              style={dangerButton}
-            >
-              Remove Enrollment
-            </button>
-          </div>
-        ))}
-      </div>
+            {classes.map((cls) => {
+              const count = getClassEnrollmentCount(cls.id);
+
+              const isFull =
+                count >= Number(cls.capacity);
+
+              return (
+                <option key={cls.id} value={cls.id}>
+                  {cls.name} — {count}/{cls.capacity}{" "}
+                  {isFull ? "(Full)" : ""}
+                </option>
+              );
+            })}
+          </select>
+
+          <button type="submit" style={buttonStyle}>
+            Enroll Athlete
+          </button>
+        </form>
+
+        <div style={{ marginTop: "2rem" }}>
+          {enrollments.map((enrollment) => (
+            <div key={enrollment.id} style={cardStyle}>
+              <h3 style={{ color: "#d4af37" }}>
+                {getAthleteName(enrollment.athlete_id)}
+              </h3>
+
+              <p>
+                Enrolled In:{" "}
+                <strong>
+                  {getClassName(enrollment.class_id)}
+                </strong>
+              </p>
+
+              <p>Status: {enrollment.status}</p>
+
+              <button
+                onClick={() =>
+                  handleDeleteEnrollment(enrollment.id)
+                }
+                style={dangerButton}
+              >
+                Remove Enrollment
+              </button>
+            </div>
+          ))}
+        </div>
       </main>
     </div>
   );
 }
-
-const pageStyle = {
-  minHeight: "100vh",
-  background: "#0b0b0f",
-  color: "#f5f5f5",
-  padding: "2rem",
-  fontFamily: "Arial, sans-serif",
-};
-
-const formStyle = {
-  display: "grid",
-  gap: "1rem",
-  maxWidth: "400px",
-};
 
 const pageShell = {
   minHeight: "100vh",
@@ -255,6 +285,12 @@ const pageShell = {
 const mainStyle = {
   flex: 1,
   padding: "2rem",
+};
+
+const formStyle = {
+  display: "grid",
+  gap: "1rem",
+  maxWidth: "400px",
 };
 
 const inputStyle = {
