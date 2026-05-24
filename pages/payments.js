@@ -6,7 +6,7 @@ import Sidebar from "../components/Sidebar";
 
 export default function Payments() {
   const { data: session, status } = useSession();
-
+  const [saveMessage, setSaveMessage] = useState("");
   const [userRole, setUserRole] = useState("");
   const [athletes, setAthletes] = useState([]);
   const [editedBalances, setEditedBalances] = useState({});
@@ -78,6 +78,7 @@ export default function Payments() {
     "Tuition Updated",
     `${athlete?.name || "An athlete"} tuition updated to $${newTuition}`
   );
+  setSaveMessage(`${athlete?.name || "Athlete"} balance saved.`);
 }
 
     const { error } = await supabase
@@ -177,6 +178,11 @@ export default function Payments() {
 
       <main style={mainStyle}>
         <h1 style={{ color: "#d4af37" }}>Payments</h1>
+        {saveMessage && (
+  <p style={{ color: "#d4af37", marginBottom: "1rem" }}>
+    {saveMessage}
+  </p>
+)}
 
         <section style={statsGridStyle}>
           <div style={statCardStyle}>
