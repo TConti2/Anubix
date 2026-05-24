@@ -12,13 +12,13 @@ export default function Dashboard() {
   const { data: session, status } = useSession();
 
   const [userRole, setUserRole] = useState("");
-
   const [dashboardStats, setDashboardStats] = useState({
     activeStudents: 0,
     totalClasses: 0,
     totalEnrollments: 0,
     monthlyRevenue: 0,
     outstandingBalance: 0,
+    attendanceRate: 0,
   });
 
   const [activityLog, setActivityLog] = useState([]);
@@ -59,43 +59,48 @@ export default function Dashboard() {
       .from("Enrollments")
       .select("*", { count: "exact", head: true });
 
-      const { data: athleteFinanceData, error: financeError } = await supabase
-  .from("Athletes")
-  .select("monthly_tuition, balance");
+    const { data: athleteFinanceData, error: financeError } = await supabase
+      .from("Athletes")
+      .select("monthly_tuition, balance");
 
-if (financeError) {
-  console.error("Finance stats error:", financeError);
-}
+    const { data: attendanceData, error: attendanceError } = await supabase
+      .from("Attendance")
+      .select("status");
 
-const monthlyRevenue = (athleteFinanceData || []).reduce(
-  (sum, athlete) => sum + Number(athlete.monthly_tuition || 0),
-  0
-);
+    if (athleteError) console.error("Athlete count error:", athleteError);
+    if (classError) console.error("Class count error:", classError);
+    if (enrollmentError) console.error("Enrollment count error:", enrollmentError);
+    if (financeError) console.error("Finance stats error:", financeError);
+    if (attendanceError) console.error("Attendance stats error:", attendanceError);
 
-const outstandingBalance = (athleteFinanceData || []).reduce(
-  (sum, athlete) => sum + Number(athlete.balance || 0),
-  0
-);
+    const monthlyRevenue = (athleteFinanceData || []).reduce(
+      (sum, athlete) => sum + Number(athlete.monthly_tuition || 0),
+      0
+    );
 
-    if (athleteError) {
-      console.error("Athlete count error:", athleteError);
-    }
+    const outstandingBalance = (athleteFinanceData || []).reduce(
+      (sum, athlete) => sum + Number(athlete.balance || 0),
+      0
+    );
 
-    if (classError) {
-      console.error("Class count error:", classError);
-    }
+    const totalAttendance = attendanceData?.length || 0;
 
-    if (enrollmentError) {
-      console.error("Enrollment count error:", enrollmentError);
-    }
+    const presentAttendance =
+      attendanceData?.filter((record) => record.status === "Present").length || 0;
+
+    const attendanceRate =
+      totalAttendance > 0
+        ? Math.round((presentAttendance / totalAttendance) * 100)
+        : 0;
 
     setDashboardStats({
-  activeStudents: athleteCount || 0,
-  totalClasses: classCount || 0,
-  totalEnrollments: enrollmentCount || 0,
-  monthlyRevenue,
-  outstandingBalance,
-});
+      activeStudents: athleteCount || 0,
+      totalClasses: classCount || 0,
+      totalEnrollments: enrollmentCount || 0,
+      monthlyRevenue,
+      outstandingBalance,
+      attendanceRate,
+    });
   }
 
   async function fetchActivityLog() {
@@ -118,17 +123,10 @@ const outstandingBalance = (athleteFinanceData || []).reduce(
   }
 
   if (!session) {
-    return (
-      <div style={{ padding: "2rem" }}>
-        <h1>Access Denied</h1>
-        <p>You must be signed in to view this page.</p>
-      </div>
-    );
+    return <p style={{ padding: "2rem" }}>Access Denied</p>;
   }
 
-  const isAdmin = userRole === "admin";
-  const isCoach = userRole === "coach";
-  const isStaff = isAdmin || isCoach;
+  const isStaff = userRole === "admin" || userRole === "coach";
 
   return (
     <div style={pageShell}>
@@ -148,10 +146,7 @@ const outstandingBalance = (athleteFinanceData || []).reduce(
             </p>
           </div>
 
-          <button
-            onClick={() => signOut()}
-            style={goldButton}
-          >
+          <button onClick={() => signOut()} style={goldButton}>
             Sign out
           </button>
         </header>
@@ -166,40 +161,19 @@ const outstandingBalance = (athleteFinanceData || []).reduce(
               View your private progression dashboard and athlete development milestones.
             </p>
 
-            <a
-              href="/my-progress"
-              style={portalButtonStyle}
-            >
+            <a href="/my-progress" style={portalButtonStyle}>
               Open My Progress
             </a>
           </section>
         ) : (
           <>
             <section style={statsGridStyle}>
-              <StatCard
-                title="Active Students"
-                value={dashboardStats.activeStudents}
-              />
-
-              <StatCard
-                title="Total Classes"
-                value={dashboardStats.totalClasses}
-              />
-
-              <StatCard
-                title="Total Enrollments"
-                value={dashboardStats.totalEnrollments}
-              />
-
-              <StatCard
-  title="Monthly Tuition"
-  value={`$${dashboardStats.monthlyRevenue}`}
-/>
-
-<StatCard
-  title="Outstanding Balance"
-  value={`$${dashboardStats.outstandingBalance}`}
-/>
+              <StatCard title="Active Students" value={dashboardStats.activeStudents} />
+              <StatCard title="Total Classes" value={dashboardStats.totalClasses} />
+              <StatCard title="Total Enrollments" value={dashboardStats.totalEnrollments} />
+              <StatCard title="Monthly Tuition" value={`$${dashboardStats.monthlyRevenue}`} />
+              <StatCard title="Outstanding Balance" value={`$${dashboardStats.outstandingBalance}`} />
+              <StatCard title="Attendance Rate" value={`${dashboardStats.attendanceRate}%`} />
             </section>
 
             <section style={activityPanelStyle}>
@@ -208,23 +182,13 @@ const outstandingBalance = (athleteFinanceData || []).reduce(
               </h2>
 
               {activityLog.length === 0 ? (
-                <p style={{ color: "#aaa" }}>
-                  No recent activity yet.
-                </p>
+                <p style={{ color: "#aaa" }}>No recent activity yet.</p>
               ) : (
                 activityLog.map((item) => (
-                  <div
-                    key={item.id}
-                    style={activityItemStyle}
-                  >
+                  <div key={item.id} style={activityItemStyle}>
                     <strong>{item.action}</strong>
 
-                    <p
-                      style={{
-                        margin: "0.35rem 0 0",
-                        color: "#aaa",
-                      }}
-                    >
+                    <p style={{ margin: "0.35rem 0 0", color: "#aaa" }}>
                       {item.description}
                     </p>
                   </div>
@@ -232,12 +196,7 @@ const outstandingBalance = (athleteFinanceData || []).reduce(
               )}
             </section>
 
-            <section
-              style={{
-                display: "grid",
-                gap: "2rem",
-              }}
-            >
+            <section style={{ display: "grid", gap: "2rem" }}>
               <QuickActions />
               <UpcomingClasses />
               <CalendarView />
@@ -270,6 +229,16 @@ const headerStyle = {
   marginBottom: "2rem",
 };
 
+const goldButton = {
+  background: "#d4af37",
+  color: "#0b0b0f",
+  border: "none",
+  padding: "0.75rem 1rem",
+  borderRadius: "8px",
+  fontWeight: "bold",
+  cursor: "pointer",
+};
+
 const portalButtonStyle = {
   display: "inline-block",
   background: "#d4af37",
@@ -279,16 +248,6 @@ const portalButtonStyle = {
   borderRadius: "10px",
   fontWeight: "bold",
   marginTop: "1rem",
-};
-
-const goldButton = {
-  background: "#d4af37",
-  color: "#0b0b0f",
-  border: "none",
-  padding: "0.75rem 1rem",
-  borderRadius: "8px",
-  fontWeight: "bold",
-  cursor: "pointer",
 };
 
 const statsGridStyle = {
