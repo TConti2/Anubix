@@ -165,7 +165,52 @@ export default function MyProgress() {
             </div>
           </section>
         )}
+<section style={summaryGridStyle}>
+  <div style={summaryCardStyle}>
+    <strong>Total Skills</strong>
+    <p>{skills.length}</p>
+  </div>
 
+  <div style={summaryCardStyle}>
+    <strong>Completed</strong>
+    <p>
+      {
+        athleteSkills.filter(
+          (skill) => skill.status === "Completed"
+        ).length
+      }
+    </p>
+  </div>
+
+  <div style={summaryCardStyle}>
+    <strong>Shining</strong>
+    <p>
+      {
+        athleteSkills.filter(
+          (skill) => skill.status === "Shining"
+        ).length
+      }
+    </p>
+  </div>
+
+  <div style={summaryCardStyle}>
+    <strong>Progress</strong>
+    <p>
+      {skills.length > 0
+        ? Math.round(
+            (athleteSkills.filter(
+              (skill) =>
+                skill.status === "Completed" ||
+                skill.status === "Shining"
+            ).length /
+              skills.length) *
+              100
+          )
+        : 0}
+      %
+    </p>
+  </div>
+</section>
         <div style={pyramidStyle}>
           {tiers.map((tier) => (
             <div
@@ -254,6 +299,21 @@ const pyramidStyle = {
   gap: "1rem",
   maxWidth: "1100px",
   margin: "0 auto",
+};
+
+const summaryGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: "1rem",
+  marginBottom: "2rem",
+};
+
+const summaryCardStyle = {
+  background: "#15151d",
+  border: "1px solid #2a2a35",
+  borderRadius: "16px",
+  padding: "1rem",
+  textAlign: "center",
 };
 
 const tierStyle = {
