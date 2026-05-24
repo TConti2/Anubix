@@ -1,31 +1,35 @@
 import { useEffect, useState } from "react";
 import { getSession, useSession } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
+import { logActivity } from "../lib/activityLogger";
 import Sidebar from "../components/Sidebar";
 
 export default function Payments() {
   const { data: session, status } = useSession();
+
   const [userRole, setUserRole] = useState("");
   const [athletes, setAthletes] = useState([]);
 
   useEffect(() => {
-    fetchAthletes();
-  }, []);
-
-  const { data: userData, error: userError } = await supabase
-  .from("Users")
-  .select("role")
-  .eq("email", session.user.email)
-  .single();
-
-if (userError) {
-  console.error("Payment role error:", userError);
-  return;
-}
-
-setUserRole(userData?.role || "");
+    if (session?.user?.email) {
+      fetchAthletes();
+    }
+  }, [session]);
 
   async function fetchAthletes() {
+    const { data: userData, error: userError } = await supabase
+      .from("Users")
+      .select("role")
+      .eq("email", session.user.email)
+      .single();
+
+    if (userError) {
+      console.error("Payment role error:", userError);
+      return;
+    }
+
+    setUserRole(userData?.role || "");
+
     const { data, error } = await supabase
       .from("Athletes")
       .select("*")
@@ -37,6 +41,37 @@ setUserRole(userData?.role || "");
     }
 
     setAthletes(data || []);
+  }
+
+  async function handleBalanceUpdate(id, newBalance) {
+    const athlete = athletes.find(
+      (athlete) => Number(athlete.id) === Number(id)
+    );
+
+    const { error } = await supabase
+      .from("Athletes")
+      .update({
+        balance: Number(newBalance),
+      })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Balance update error:", error);
+      return;
+    }
+
+    setAthletes(
+      athletes.map((athlete) =>
+        athlete.id === id
+          ? { ...athlete, balance: Number(newBalance) }
+          : athlete
+      )
+    );
+
+    await logActivity(
+      "Balance Updated",
+      `${athlete?.name || "An athlete"} balance updated to $${newBalance}`
+    );
   }
 
   const monthlyRevenue = athletes.reduce(
@@ -53,18 +88,22 @@ setUserRole(userData?.role || "");
     return <p style={{ padding: "2rem" }}>Loading...</p>;
   }
 
-  if (userRole && userRole !== "admin") {
-  return (
-    <div style={pageShell}>
-      <Sidebar activePage="payments" />
+  if (!session) {
+    return <p style={{ padding: "2rem" }}>Access Denied</p>;
+  }
 
-      <main style={mainStyle}>
-        <h1>Access Denied</h1>
-        <p>This area is only available to admins.</p>
-      </main>
-    </div>
-  );
-}
+  if (userRole && userRole !== "admin") {
+    return (
+      <div style={pageShell}>
+        <Sidebar activePage="payments" />
+
+        <main style={mainStyle}>
+          <h1>Access Denied</h1>
+          <p>This area is only available to admins.</p>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div style={pageShell}>
@@ -90,20 +129,30 @@ setUserRole(userData?.role || "");
             Athlete Balances
           </h2>
 
-          {athletes.map((athlete) => (
-            <div key={athlete.id} style={rowStyle}>
-              <div>
-                <strong>{athlete.name}</strong>
-                <p style={{ color: "#aaa", margin: "0.35rem 0 0" }}>
-                  Tuition: ${athlete.monthly_tuition || 0}
-                </p>
-              </div>
+          {athletes.length === 0 ? (
+            <p style={{ color: "#aaa" }}>No athletes found.</p>
+          ) : (
+            athletes.map((athlete) => (
+              <div key={athlete.id} style={rowStyle}>
+                <div>
+                  <strong>{athlete.name}</strong>
 
-              <strong style={{ color: "#d4af37" }}>
-                Balance: ${athlete.balance || 0}
-              </strong>
-            </div>
-          ))}
+                  <p style={{ color: "#aaa", margin: "0.35rem 0 0" }}>
+                    Tuition: ${athlete.monthly_tuition || 0}
+                  </p>
+                </div>
+
+                <input
+                  type="number"
+                  value={athlete.balance || 0}
+                  onChange={(e) =>
+                    handleBalanceUpdate(athlete.id, e.target.value)
+                  }
+                  style={balanceInputStyle}
+                />
+              </div>
+            ))
+          )}
         </section>
       </main>
     </div>
@@ -149,6 +198,16 @@ const panelStyle = {
   border: "1px solid #2a2a35",
   borderRadius: "16px",
   padding: "1.5rem",
+};
+
+const balanceInputStyle = {
+  background: "#1f1f2b",
+  color: "#d4af37",
+  border: "1px solid #2f2f3d",
+  borderRadius: "10px",
+  padding: "0.5rem 0.75rem",
+  width: "120px",
+  fontWeight: "bold",
 };
 
 const rowStyle = {
