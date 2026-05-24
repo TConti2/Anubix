@@ -9,6 +9,8 @@ export default function Payments() {
 
   const [userRole, setUserRole] = useState("");
   const [athletes, setAthletes] = useState([]);
+  const [editedBalances, setEditedBalances] = useState({});
+  const [editedTuitions, setEditedTuitions] = useState({});
 
   useEffect(() => {
     if (session?.user?.email) {
@@ -47,6 +49,36 @@ export default function Payments() {
     const athlete = athletes.find(
       (athlete) => Number(athlete.id) === Number(id)
     );
+    async function handleTuitionUpdate(id, newTuition) {
+  const athlete = athletes.find(
+    (athlete) => Number(athlete.id) === Number(id)
+  );
+
+  const { error } = await supabase
+    .from("Athletes")
+    .update({
+      monthly_tuition: Number(newTuition),
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Tuition update error:", error);
+    return;
+  }
+
+  setAthletes(
+    athletes.map((athlete) =>
+      athlete.id === id
+        ? { ...athlete, monthly_tuition: Number(newTuition) }
+        : athlete
+    )
+  );
+
+  await logActivity(
+    "Tuition Updated",
+    `${athlete?.name || "An athlete"} tuition updated to $${newTuition}`
+  );
+}
 
     const { error } = await supabase
       .from("Athletes")
@@ -73,6 +105,40 @@ export default function Payments() {
       `${athlete?.name || "An athlete"} balance updated to $${newBalance}`
     );
   }
+
+  async function handleTuitionUpdate(id, newTuition) {
+  const athlete = athletes.find(
+    (athlete) => Number(athlete.id) === Number(id)
+  );
+
+  const { error } = await supabase
+    .from("Athletes")
+    .update({
+      monthly_tuition: Number(newTuition),
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Tuition update error:", error);
+    return;
+  }
+
+  setAthletes(
+    athletes.map((athlete) =>
+      athlete.id === id
+        ? {
+            ...athlete,
+            monthly_tuition: Number(newTuition),
+          }
+        : athlete
+    )
+  );
+
+  await logActivity(
+    "Tuition Updated",
+    `${athlete?.name || "An athlete"} tuition updated to $${newTuition}`
+  );
+}
 
   const monthlyRevenue = athletes.reduce(
     (sum, athlete) => sum + Number(athlete.monthly_tuition || 0),
@@ -137,19 +203,60 @@ export default function Payments() {
                 <div>
                   <strong>{athlete.name}</strong>
 
-                  <p style={{ color: "#aaa", margin: "0.35rem 0 0" }}>
-                    Tuition: ${athlete.monthly_tuition || 0}
-                  </p>
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "0.35rem" }}>
+  <span style={{ color: "#aaa" }}>Tuition:</span>
+
+  <input
+    type="number"
+    value={editedTuitions[athlete.id] ?? athlete.monthly_tuition ?? 0}
+    onChange={(e) =>
+      setEditedTuitions({
+        ...editedTuitions,
+        [athlete.id]: e.target.value,
+      })
+    }
+    style={balanceInputStyle}
+  />
+
+  <button
+    onClick={() =>
+      handleTuitionUpdate(
+        athlete.id,
+        editedTuitions[athlete.id] ?? athlete.monthly_tuition ?? 0
+      )
+    }
+    style={smallButtonStyle}
+  >
+    Save
+  </button>
+</div>
                 </div>
 
-                <input
-                  type="number"
-                  value={athlete.balance || 0}
-                  onChange={(e) =>
-                    handleBalanceUpdate(athlete.id, e.target.value)
-                  }
-                  style={balanceInputStyle}
-                />
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+  <input
+    type="number"
+    value={editedBalances[athlete.id] ?? athlete.balance ?? 0}
+    onChange={(e) =>
+      setEditedBalances({
+        ...editedBalances,
+        [athlete.id]: e.target.value,
+      })
+    }
+    style={balanceInputStyle}
+  />
+
+  <button
+    onClick={() =>
+      handleBalanceUpdate(
+        athlete.id,
+        editedBalances[athlete.id] ?? athlete.balance ?? 0
+      )
+    }
+    style={smallButtonStyle}
+  >
+    Save
+  </button>
+</div>
               </div>
             ))
           )}
@@ -217,6 +324,16 @@ const rowStyle = {
   borderBottom: "1px solid #2a2a35",
   padding: "0.9rem 0",
   gap: "1rem",
+};
+
+const smallButtonStyle = {
+  background: "#d4af37",
+  color: "#0b0b0f",
+  border: "none",
+  borderRadius: "8px",
+  padding: "0.45rem 0.7rem",
+  fontWeight: "bold",
+  cursor: "pointer",
 };
 
 export async function getServerSideProps(context) {
