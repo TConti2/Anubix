@@ -151,7 +151,24 @@ export default function Skills() {
       )
     );
   }
+async function handleUpdateCoachNotes(recordId, notes) {
+  const { data, error } = await supabase
+    .from("AthleteSkills")
+    .update({ coach_notes: notes })
+    .eq("id", recordId)
+    .select();
 
+  if (error) {
+    console.error("Error updating coach notes:", error);
+    return;
+  }
+
+  setAthleteSkills(
+    athleteSkills.map((record) =>
+      record.id === recordId ? data[0] : record
+    )
+  );
+}
   async function handleDeleteSkillProgress(recordId) {
     const { error } = await supabase
       .from("AthleteSkills")
@@ -199,7 +216,19 @@ export default function Skills() {
 
         {records.map((record) => (
           <div key={record.id} style={athleteRowStyle}>
-            <span>{getAthleteName(record.athlete_id)}</span>
+            <div>
+  <span>{getAthleteName(record.athlete_id)}</span>
+
+  <input
+    type="text"
+    placeholder="Coach notes..."
+    value={record.coach_notes || ""}
+    onChange={(e) =>
+      handleUpdateCoachNotes(record.id, e.target.value)
+    }
+    style={noteInputStyle}
+  />
+</div>
 
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <select
@@ -293,7 +322,45 @@ export default function Skills() {
             {statusMessage}
           </p>
         )}
+<section style={summaryGridStyle}>
+  <div style={summaryCardStyle}>
+    <strong>Total Records</strong>
+    <p>{athleteSkills.length}</p>
+  </div>
 
+  <div style={summaryCardStyle}>
+    <strong>Constructing</strong>
+    <p>
+      {
+        athleteSkills.filter(
+          (record) => record.status === "Constructing"
+        ).length
+      }
+    </p>
+  </div>
+
+  <div style={summaryCardStyle}>
+    <strong>Completed</strong>
+    <p>
+      {
+        athleteSkills.filter(
+          (record) => record.status === "Completed"
+        ).length
+      }
+    </p>
+  </div>
+
+  <div style={summaryCardStyle}>
+    <strong>Shining</strong>
+    <p>
+      {
+        athleteSkills.filter(
+          (record) => record.status === "Shining"
+        ).length
+      }
+    </p>
+  </div>
+</section>
         <div style={pyramidStyle}>
           {tiers.map((tier) => (
             <div
@@ -347,6 +414,18 @@ const mainStyle = {
   padding: "2rem",
 };
 
+const noteInputStyle = {
+  display: "block",
+  marginTop: "0.4rem",
+  background: "#15151d",
+  color: "#f5f5f5",
+  border: "1px solid #2a2a35",
+  borderRadius: "8px",
+  padding: "0.35rem 0.5rem",
+  fontSize: "0.75rem",
+  width: "100%",
+};
+
 const pageStyle = {
   minHeight: "100vh",
   background: "#0b0b0f",
@@ -373,6 +452,21 @@ const pyramidStyle = {
   gap: "1rem",
   maxWidth: "1100px",
   margin: "0 auto",
+};
+
+const summaryGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: "1rem",
+  marginBottom: "2rem",
+};
+
+const summaryCardStyle = {
+  background: "#15151d",
+  border: "1px solid #2a2a35",
+  borderRadius: "16px",
+  padding: "1rem",
+  textAlign: "center",
 };
 
 const tierStyle = {
