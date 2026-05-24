@@ -9,9 +9,12 @@ export default function MyProgress() {
   const [userRole, setUserRole] = useState("");
   const [linkedAthleteId, setLinkedAthleteId] = useState(null);
 
+  const [athlete, setAthlete] = useState(null);
+
   const [tiers, setTiers] = useState([]);
   const [skills, setSkills] = useState([]);
   const [athleteSkills, setAthleteSkills] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
 
   useEffect(() => {
     if (session?.user?.email) {
@@ -34,6 +37,14 @@ export default function MyProgress() {
     setUserRole(userData?.role || "");
     setLinkedAthleteId(userData?.athlete_id || null);
 
+    if (!userData?.athlete_id) return;
+
+    const { data: athleteData } = await supabase
+      .from("Athletes")
+      .select("*")
+      .eq("id", userData.athlete_id)
+      .single();
+
     const { data: tierData } = await supabase
       .from("PyramidTiers")
       .select("*")
@@ -46,15 +57,24 @@ export default function MyProgress() {
     const { data: athleteSkillData } = await supabase
       .from("AthleteSkills")
       .select("*")
-      .eq("athlete_id", userData?.athlete_id);
+      .eq("athlete_id", userData.athlete_id);
 
+    const { data: enrollmentData } = await supabase
+      .from("Enrollments")
+      .select("*")
+      .eq("athlete_id", userData.athlete_id);
+
+    setAthlete(athleteData || null);
     setTiers(tierData || []);
     setSkills(skillData || []);
     setAthleteSkills(athleteSkillData || []);
+    setEnrollments(enrollmentData || []);
   }
 
   function getSkillsForTier(tierId) {
-    return skills.filter((skill) => Number(skill.tier_id) === Number(tierId));
+    return skills.filter(
+      (skill) => Number(skill.tier_id) === Number(tierId)
+    );
   }
 
   function getSkillStatus(skillId) {
@@ -88,6 +108,7 @@ export default function MyProgress() {
 
         <main style={mainStyle}>
           <h1 style={{ color: "#d4af37" }}>My Progress</h1>
+
           <p>No athlete profile is linked to this account yet.</p>
         </main>
       </div>
@@ -105,6 +126,46 @@ export default function MyProgress() {
           Private athlete progression view.
         </p>
 
+        {athlete && (
+          <section style={profilePanelStyle}>
+            <h2 style={{ color: "#d4af37", marginTop: 0 }}>
+              Athlete Profile
+            </h2>
+
+            <div style={profileGridStyle}>
+              <div style={profileCardStyle}>
+                <strong>Name</strong>
+                <p>{athlete.name}</p>
+              </div>
+
+              <div style={profileCardStyle}>
+                <strong>Level</strong>
+                <p>{athlete.level}</p>
+              </div>
+
+              <div style={profileCardStyle}>
+                <strong>Monthly Tuition</strong>
+                <p>${athlete.monthly_tuition || 0}</p>
+              </div>
+
+              <div style={profileCardStyle}>
+                <strong>Outstanding Balance</strong>
+                <p>${athlete.balance || 0}</p>
+              </div>
+
+              <div style={profileCardStyle}>
+                <strong>Enrolled Classes</strong>
+                <p>{enrollments.length}</p>
+              </div>
+
+              <div style={profileCardStyle}>
+                <strong>Status</strong>
+                <p>{athlete.status || "Active"}</p>
+              </div>
+            </div>
+          </section>
+        )}
+
         <div style={pyramidStyle}>
           {tiers.map((tier) => (
             <div
@@ -118,14 +179,19 @@ export default function MyProgress() {
                 {tier.name}
               </h2>
 
-              <p style={{ color: "#aaa" }}>{tier.description}</p>
+              <p style={{ color: "#aaa" }}>
+                {tier.description}
+              </p>
 
               <div style={skillGridStyle}>
                 {getSkillsForTier(tier.id).map((skill) => {
                   const skillStatus = getSkillStatus(skill.id);
 
                   return (
-                    <div key={skill.id} style={getSkillStyle(skillStatus)}>
+                    <div
+                      key={skill.id}
+                      style={getSkillStyle(skillStatus)}
+                    >
                       <strong>{skill.name}</strong>
 
                       <p style={{ color: "#aaa" }}>
@@ -158,6 +224,27 @@ const pageShell = {
 const mainStyle = {
   flex: 1,
   padding: "2rem",
+};
+
+const profilePanelStyle = {
+  background: "#15151d",
+  border: "1px solid #2a2a35",
+  borderRadius: "18px",
+  padding: "1.5rem",
+  marginBottom: "2rem",
+};
+
+const profileGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: "1rem",
+};
+
+const profileCardStyle = {
+  background: "#0b0b0f",
+  border: "1px solid #2a2a35",
+  borderRadius: "14px",
+  padding: "1rem",
 };
 
 const pyramidStyle = {
