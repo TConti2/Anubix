@@ -18,6 +18,8 @@ export default function Athletes() {
     age: "",
     level: "",
     parent: "",
+    monthly_tuition: "",
+    balance: "",
   });
 
   const [editingIndex, setEditingIndex] = useState(null);
@@ -27,6 +29,8 @@ export default function Athletes() {
     age: "",
     level: "",
     parent: "",
+    monthly_tuition: "",
+    balance: "",
   });
 
   useEffect(() => {
@@ -66,9 +70,9 @@ export default function Athletes() {
   }
 
   const filteredAthletes = athletes.filter((athlete) =>
-    athlete.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    athlete.level.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    athlete.parent.toLowerCase().includes(searchTerm.toLowerCase())
+    (athlete.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (athlete.level || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (athlete.parent || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   async function handleAddAthlete(e) {
@@ -83,6 +87,8 @@ export default function Athletes() {
       age: Number(newAthlete.age),
       level: newAthlete.level,
       parent: newAthlete.parent,
+      monthly_tuition: Number(newAthlete.monthly_tuition || 0),
+      balance: Number(newAthlete.balance || 0),
       status: "Active",
     };
 
@@ -108,6 +114,8 @@ export default function Athletes() {
       age: "",
       level: "",
       parent: "",
+      monthly_tuition: "",
+      balance: "",
     });
   }
 
@@ -135,13 +143,17 @@ export default function Athletes() {
   }
 
   function handleStartEdit(index) {
+    const athlete = filteredAthletes[index];
+
     setEditingIndex(index);
 
     setEditedAthlete({
-      name: filteredAthletes[index].name,
-      age: filteredAthletes[index].age,
-      level: filteredAthletes[index].level,
-      parent: filteredAthletes[index].parent,
+      name: athlete.name || "",
+      age: athlete.age || "",
+      level: athlete.level || "",
+      parent: athlete.parent || "",
+      monthly_tuition: athlete.monthly_tuition || "",
+      balance: athlete.balance || "",
     });
   }
 
@@ -153,6 +165,8 @@ export default function Athletes() {
         age: Number(editedAthlete.age),
         level: editedAthlete.level,
         parent: editedAthlete.parent,
+        monthly_tuition: Number(editedAthlete.monthly_tuition || 0),
+        balance: Number(editedAthlete.balance || 0),
       })
       .eq("id", id)
       .select();
@@ -180,6 +194,8 @@ export default function Athletes() {
       age: "",
       level: "",
       parent: "",
+      monthly_tuition: "",
+      balance: "",
     });
   }
 
@@ -191,6 +207,8 @@ export default function Athletes() {
       age: "",
       level: "",
       parent: "",
+      monthly_tuition: "",
+      balance: "",
     });
   }
 
@@ -238,7 +256,7 @@ export default function Athletes() {
           <div>
             <h1 style={{ margin: 0 }}>Athletes</h1>
             <p style={{ color: "#aaa", marginTop: "0.5rem" }}>
-              Manage athlete profiles, levels, parent contacts, and activity status.
+              Manage athlete profiles, levels, parent contacts, tuition, balances, and activity status.
             </p>
           </div>
 
@@ -280,6 +298,22 @@ export default function Athletes() {
             style={inputStyle}
           />
 
+          <input
+            type="number"
+            placeholder="Monthly Tuition"
+            value={newAthlete.monthly_tuition}
+            onChange={(e) => setNewAthlete({ ...newAthlete, monthly_tuition: e.target.value })}
+            style={inputStyle}
+          />
+
+          <input
+            type="number"
+            placeholder="Balance"
+            value={newAthlete.balance}
+            onChange={(e) => setNewAthlete({ ...newAthlete, balance: e.target.value })}
+            style={inputStyle}
+          />
+
           <button type="submit" style={goldButton}>
             Add Athlete
           </button>
@@ -306,26 +340,58 @@ export default function Athletes() {
                 <>
                   <input
                     value={editedAthlete.name}
-                    onChange={(e) => setEditedAthlete({ ...editedAthlete, name: e.target.value })}
+                    onChange={(e) =>
+                      setEditedAthlete({ ...editedAthlete, name: e.target.value })
+                    }
                     style={inputStyle}
                   />
 
                   <input
                     type="number"
                     value={editedAthlete.age}
-                    onChange={(e) => setEditedAthlete({ ...editedAthlete, age: e.target.value })}
+                    onChange={(e) =>
+                      setEditedAthlete({ ...editedAthlete, age: e.target.value })
+                    }
                     style={{ ...inputStyle, marginTop: "0.75rem" }}
                   />
 
                   <input
                     value={editedAthlete.level}
-                    onChange={(e) => setEditedAthlete({ ...editedAthlete, level: e.target.value })}
+                    onChange={(e) =>
+                      setEditedAthlete({ ...editedAthlete, level: e.target.value })
+                    }
                     style={{ ...inputStyle, marginTop: "0.75rem" }}
                   />
 
                   <input
                     value={editedAthlete.parent}
-                    onChange={(e) => setEditedAthlete({ ...editedAthlete, parent: e.target.value })}
+                    onChange={(e) =>
+                      setEditedAthlete({ ...editedAthlete, parent: e.target.value })
+                    }
+                    style={{ ...inputStyle, marginTop: "0.75rem" }}
+                  />
+
+                  <input
+                    type="number"
+                    value={editedAthlete.monthly_tuition}
+                    onChange={(e) =>
+                      setEditedAthlete({
+                        ...editedAthlete,
+                        monthly_tuition: e.target.value,
+                      })
+                    }
+                    style={{ ...inputStyle, marginTop: "0.75rem" }}
+                  />
+
+                  <input
+                    type="number"
+                    value={editedAthlete.balance}
+                    onChange={(e) =>
+                      setEditedAthlete({
+                        ...editedAthlete,
+                        balance: e.target.value,
+                      })
+                    }
                     style={{ ...inputStyle, marginTop: "0.75rem" }}
                   />
 
@@ -341,11 +407,15 @@ export default function Athletes() {
                 </>
               ) : (
                 <>
-                  <h2 style={{ marginTop: 0, color: "#d4af37" }}>{athlete.name}</h2>
+                  <h2 style={{ marginTop: 0, color: "#d4af37" }}>
+                    {athlete.name}
+                  </h2>
 
                   <p><strong>Age:</strong> {athlete.age}</p>
                   <p><strong>Level:</strong> {athlete.level}</p>
                   <p><strong>Parent:</strong> {athlete.parent}</p>
+                  <p><strong>Monthly Tuition:</strong> ${athlete.monthly_tuition || 0}</p>
+                  <p><strong>Balance:</strong> ${athlete.balance || 0}</p>
 
                   <div style={{ marginTop: "1rem" }}>
                     <strong>Enrolled Classes:</strong>

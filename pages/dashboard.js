@@ -17,6 +17,8 @@ export default function Dashboard() {
     activeStudents: 0,
     totalClasses: 0,
     totalEnrollments: 0,
+    monthlyRevenue: 0,
+    outstandingBalance: 0,
   });
 
   const [activityLog, setActivityLog] = useState([]);
@@ -57,6 +59,24 @@ export default function Dashboard() {
       .from("Enrollments")
       .select("*", { count: "exact", head: true });
 
+      const { data: athleteFinanceData, error: financeError } = await supabase
+  .from("Athletes")
+  .select("monthly_tuition, balance");
+
+if (financeError) {
+  console.error("Finance stats error:", financeError);
+}
+
+const monthlyRevenue = (athleteFinanceData || []).reduce(
+  (sum, athlete) => sum + Number(athlete.monthly_tuition || 0),
+  0
+);
+
+const outstandingBalance = (athleteFinanceData || []).reduce(
+  (sum, athlete) => sum + Number(athlete.balance || 0),
+  0
+);
+
     if (athleteError) {
       console.error("Athlete count error:", athleteError);
     }
@@ -70,10 +90,12 @@ export default function Dashboard() {
     }
 
     setDashboardStats({
-      activeStudents: athleteCount || 0,
-      totalClasses: classCount || 0,
-      totalEnrollments: enrollmentCount || 0,
-    });
+  activeStudents: athleteCount || 0,
+  totalClasses: classCount || 0,
+  totalEnrollments: enrollmentCount || 0,
+  monthlyRevenue,
+  outstandingBalance,
+});
   }
 
   async function fetchActivityLog() {
@@ -170,9 +192,14 @@ export default function Dashboard() {
               />
 
               <StatCard
-                title="Revenue (MTD)"
-                value="$3,450"
-              />
+  title="Monthly Tuition"
+  value={`$${dashboardStats.monthlyRevenue}`}
+/>
+
+<StatCard
+  title="Outstanding Balance"
+  value={`$${dashboardStats.outstandingBalance}`}
+/>
             </section>
 
             <section style={activityPanelStyle}>
