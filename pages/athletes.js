@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSession, useSession, signOut } from "next-auth/react";
 import { supabase } from "../lib/supabaseClient";
-import { logActivity } from "../lib/activityLogger";
+import { logActivity } from "../lib/ActivityLogger";
 import Sidebar from "../components/Sidebar";
 
 export default function Athletes() {
