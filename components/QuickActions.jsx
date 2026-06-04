@@ -4,16 +4,18 @@ export default function QuickActions() {
   const router = useRouter();
 
   const buttonStyle = {
-    background: "#1f1f2b",
-    color: "#f5f5f5",
-    border: "1px solid #2f2f3d",
-    borderRadius: "12px",
-    padding: "1rem 1.25rem",
-    cursor: "pointer",
-    fontWeight: "600",
-    transition: "0.2s ease",
-    minWidth: "180px",
-  };
+  background: "#1f1f2b",
+  color: "#f5f5f5",
+  border: "1px solid #2f2f3d",
+  borderRadius: "12px",
+  padding: "1rem",
+  cursor: "pointer",
+  fontWeight: "600",
+  transition: "0.2s ease",
+  width: "100%",
+  minWidth: 0,
+  boxSizing: "border-box",
+};
 
   return (
     <div>
@@ -27,12 +29,13 @@ export default function QuickActions() {
       </h2>
 
       <div
-        style={{
-          display: "flex",
-          gap: "1rem",
-          flexWrap: "wrap",
-        }}
-      >
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+    gap: "1rem",
+    width: "100%",
+  }}
+>
         <button
           style={buttonStyle}
           onClick={() => router.push("/athletes")}

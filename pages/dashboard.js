@@ -196,7 +196,7 @@ export default function Dashboard() {
               )}
             </section>
 
-            <section style={{ display: "grid", gap: "2rem" }}>
+            <section style={widgetGridStyle}>
               <QuickActions />
               <UpcomingClasses />
               <CalendarView />
@@ -219,14 +219,18 @@ const pageShell = {
 
 const mainStyle = {
   flex: 1,
-  padding: "2rem",
+  padding: "clamp(1rem, 4vw, 2rem)",
+  minWidth: 0,
+  overflowX: "hidden"
 };
 
 const headerStyle = {
   display: "flex",
   justifyContent: "space-between",
-  alignItems: "center",
+  alignItems: "flex-start",
   marginBottom: "2rem",
+  gap: "1rem"
+  flexWrap: "wrap"
 };
 
 const goldButton = {
@@ -252,22 +256,33 @@ const portalButtonStyle = {
 
 const statsGridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
   gap: "1rem",
   marginBottom: "2rem",
+  width: "100%",
 };
 
 const activityPanelStyle = {
   background: "#15151d",
   border: "1px solid #2a2a35",
   borderRadius: "16px",
-  padding: "1.5rem",
+  padding: "clamp(1rem, 4vw, 1.5rem)",
   marginBottom: "2rem",
+  width: "100%",
+  boxSizing: "border-box",
+  overflowWrap: "break-word",
 };
 
 const activityItemStyle = {
   borderBottom: "1px solid #2a2a35",
   padding: "0.75rem 0",
+};
+
+const widgetGridStyle = {
+  display: "grid",
+  gap: "2rem",
+  width: "100%",
+  minWidth: 0,
 };
 
 export async function getServerSideProps(context) {
