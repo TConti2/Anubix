@@ -4,7 +4,9 @@ import { supabase } from "../lib/supabaseClient";
 
 export default function Sidebar({ activePage = "" }) {
   const { data: session } = useSession();
+
   const [userRole, setUserRole] = useState("");
+  const [unreadGlyphCount, setUnreadGlyphCount] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -40,8 +42,32 @@ export default function Sidebar({ activePage = "" }) {
     fetchUserRole();
   }, [session]);
 
+  useEffect(() => {
+    async function fetchUnreadGlyphs() {
+      if (!session?.user?.email) return;
+
+      const { count, error } = await supabase
+        .from("Glyphs")
+        .select("*", { count: "exact", head: true })
+        .eq("recipient_email", session.user.email)
+        .eq("status", "Unread");
+
+      if (error) {
+        console.error("Unread glyph count error:", error);
+        return;
+      }
+
+      setUnreadGlyphCount(count || 0);
+    }
+
+    fetchUnreadGlyphs();
+  }, [session]);
+
   const isAdmin = userRole === "admin";
   const isCoach = userRole === "coach";
+
+  const glyphLabel =
+    unreadGlyphCount > 0 ? `Glyphs (${unreadGlyphCount})` : "Glyphs";
 
   const links = [
     { label: "Dashboard", href: "/dashboard", key: "dashboard" },
@@ -50,7 +76,7 @@ export default function Sidebar({ activePage = "" }) {
     ...(isAdmin || isCoach
       ? [
           { label: "Activity", href: "/activity", key: "activity" },
-          { label: "Glyphs", href: "/glyphs", key: "glyphs" },
+          { label: glyphLabel, href: "/glyphs", key: "glyphs" },
           { label: "Athletes", href: "/athletes", key: "athletes" },
           { label: "Classes", href: "/classes", key: "classes" },
           { label: "Enrollments", href: "/enrollments", key: "enrollments" },
