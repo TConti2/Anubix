@@ -229,7 +229,7 @@ const headerStyle = {
   justifyContent: "space-between",
   alignItems: "flex-start",
   marginBottom: "2rem",
-  gap: "1rem"
+  gap: "1rem",
   flexWrap: "wrap"
 };
 
