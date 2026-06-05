@@ -8,9 +8,14 @@ export default function Glyphs() {
 
   const [glyphs, setGlyphs] = useState([]);
   const [users, setUsers] = useState([]);
+
   const [recipientEmail, setRecipientEmail] = useState("");
+  const [messageType, setMessageType] = useState("General");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+
+  const [activeTab, setActiveTab] = useState("Inbox");
+  const [sendMessage, setSendMessage] = useState("");
 
   useEffect(() => {
     if (session?.user?.email) {
@@ -23,7 +28,9 @@ export default function Glyphs() {
     const { data, error } = await supabase
       .from("Glyphs")
       .select("*")
-      .or(`sender_email.eq.${session.user.email},recipient_email.eq.${session.user.email}`)
+      .or(
+        `sender_email.eq.${session.user.email},recipient_email.eq.${session.user.email}`
+      )
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -57,6 +64,7 @@ export default function Glyphs() {
       {
         sender_email: session.user.email,
         recipient_email: recipientEmail,
+        message_type: messageType,
         subject,
         message,
         status: "Unread",
@@ -69,13 +77,56 @@ export default function Glyphs() {
     }
 
     setRecipientEmail("");
+    setMessageType("General");
     setSubject("");
     setMessage("");
+    setSendMessage("Glyph sent.");
     fetchGlyphs();
   }
 
-  if (status === "loading") return <p style={{ padding: "2rem" }}>Loading...</p>;
-  if (!session) return <p style={{ padding: "2rem" }}>Access Denied</p>;
+  async function handleMarkAsRead(glyphId) {
+    const { data, error } = await supabase
+      .from("Glyphs")
+      .update({
+        status: "Read",
+        read_at: new Date().toISOString(),
+      })
+      .eq("id", glyphId)
+      .select();
+
+    if (error) {
+      console.error("Mark as read error:", error);
+      return;
+    }
+
+    setGlyphs(
+      glyphs.map((glyph) =>
+        glyph.id === glyphId ? data[0] : glyph
+      )
+    );
+  }
+
+  const inboxGlyphs = glyphs.filter(
+    (glyph) => glyph.recipient_email === session?.user?.email
+  );
+
+  const sentGlyphs = glyphs.filter(
+    (glyph) => glyph.sender_email === session?.user?.email
+  );
+
+  const visibleGlyphs = activeTab === "Inbox" ? inboxGlyphs : sentGlyphs;
+
+  const unreadCount = inboxGlyphs.filter(
+    (glyph) => glyph.status === "Unread"
+  ).length;
+
+  if (status === "loading") {
+    return <p style={{ padding: "2rem" }}>Loading...</p>;
+  }
+
+  if (!session) {
+    return <p style={{ padding: "2rem" }}>Access Denied</p>;
+  }
 
   return (
     <div style={pageShell}>
@@ -105,6 +156,18 @@ export default function Glyphs() {
               ))}
           </select>
 
+          <select
+            value={messageType}
+            onChange={(e) => setMessageType(e.target.value)}
+            style={inputStyle}
+          >
+            <option value="General">General</option>
+            <option value="Progress">Progress</option>
+            <option value="Schedule">Schedule</option>
+            <option value="Billing">Billing</option>
+            <option value="Concern">Concern</option>
+          </select>
+
           <input
             type="text"
             placeholder="Subject"
@@ -123,29 +186,98 @@ export default function Glyphs() {
           <button type="submit" style={goldButton}>
             Send Glyph
           </button>
+
+          {sendMessage && (
+            <p style={{ color: "#d4af37", margin: 0 }}>
+              {sendMessage}
+            </p>
+          )}
         </form>
 
         <section style={panelStyle}>
-          <h2 style={{ color: "#d4af37", marginTop: 0 }}>Message History</h2>
+          <div style={tabRowStyle}>
+            <button
+              onClick={() => setActiveTab("Inbox")}
+              style={
+                activeTab === "Inbox"
+                  ? activeTabButtonStyle
+                  : tabButtonStyle
+              }
+            >
+              Inbox ({unreadCount} unread)
+            </button>
 
-          {glyphs.length === 0 ? (
-            <p style={{ color: "#aaa" }}>No glyphs yet.</p>
+            <button
+              onClick={() => setActiveTab("Sent")}
+              style={
+                activeTab === "Sent"
+                  ? activeTabButtonStyle
+                  : tabButtonStyle
+              }
+            >
+              Sent
+            </button>
+          </div>
+
+          <h2 style={{ color: "#d4af37", marginTop: 0 }}>
+            {activeTab}
+          </h2>
+
+          {visibleGlyphs.length === 0 ? (
+            <p style={{ color: "#aaa" }}>No glyphs here yet.</p>
           ) : (
-            glyphs.map((glyph) => (
-              <div key={glyph.id} style={glyphCardStyle}>
-                <strong>{glyph.subject}</strong>
+            visibleGlyphs.map((glyph) => {
+              const isUnread =
+                glyph.status === "Unread" &&
+                glyph.recipient_email === session.user.email;
 
-                <p style={{ color: "#aaa" }}>{glyph.message}</p>
+              return (
+                <div
+                  key={glyph.id}
+                  style={{
+                    ...glyphCardStyle,
+                    ...(isUnread ? unreadGlyphStyle : {}),
+                  }}
+                >
+                  <div style={glyphHeaderStyle}>
+                    <div>
+                      <strong>{glyph.subject}</strong>
 
-                <small style={{ color: "#777" }}>
-                  From: {glyph.sender_email}
-                  <br />
-                  To: {glyph.recipient_email}
-                  <br />
-                  {new Date(glyph.created_at).toLocaleString()}
-                </small>
-              </div>
-            ))
+                      <p style={typeBadgeStyle}>
+                        {glyph.message_type || "General"}
+                      </p>
+                    </div>
+
+                    <span style={statusBadgeStyle}>
+                      {glyph.status}
+                    </span>
+                  </div>
+
+                  <p style={{ color: "#aaa", whiteSpace: "pre-wrap" }}>
+                    {glyph.message}
+                  </p>
+
+                  <small style={{ color: "#777" }}>
+                    From: {glyph.sender_email}
+                    <br />
+                    To: {glyph.recipient_email}
+                    <br />
+                    {new Date(glyph.created_at).toLocaleString()}
+                  </small>
+
+                  {isUnread && (
+                    <div style={{ marginTop: "1rem" }}>
+                      <button
+                        onClick={() => handleMarkAsRead(glyph.id)}
+                        style={smallButtonStyle}
+                      >
+                        Mark as Read
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </section>
       </main>
@@ -171,11 +303,12 @@ const formStyle = {
   background: "#15151d",
   border: "1px solid #2a2a35",
   borderRadius: "16px",
-  padding: "1.5rem",
+  padding: "clamp(1rem, 4vw, 1.5rem)",
   display: "grid",
   gap: "1rem",
   marginBottom: "2rem",
   maxWidth: "650px",
+  boxSizing: "border-box",
 };
 
 const inputStyle = {
@@ -184,6 +317,8 @@ const inputStyle = {
   border: "1px solid #2a2a35",
   background: "#0b0b0f",
   color: "#f5f5f5",
+  width: "100%",
+  boxSizing: "border-box",
 };
 
 const textareaStyle = {
@@ -200,18 +335,87 @@ const goldButton = {
   borderRadius: "10px",
   fontWeight: "bold",
   cursor: "pointer",
+  width: "100%",
 };
 
 const panelStyle = {
   background: "#15151d",
   border: "1px solid #2a2a35",
   borderRadius: "16px",
-  padding: "1.5rem",
+  padding: "clamp(1rem, 4vw, 1.5rem)",
+  boxSizing: "border-box",
+};
+
+const tabRowStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "0.75rem",
+  marginBottom: "1.5rem",
+};
+
+const tabButtonStyle = {
+  background: "#1f1f2b",
+  color: "#f5f5f5",
+  border: "1px solid #2f2f3d",
+  borderRadius: "10px",
+  padding: "0.65rem 0.9rem",
+  cursor: "pointer",
+  fontWeight: "bold",
+};
+
+const activeTabButtonStyle = {
+  ...tabButtonStyle,
+  background: "#d4af37",
+  color: "#0b0b0f",
 };
 
 const glyphCardStyle = {
   borderBottom: "1px solid #2a2a35",
   padding: "1rem 0",
+};
+
+const unreadGlyphStyle = {
+  background: "rgba(212, 175, 55, 0.08)",
+  borderRadius: "12px",
+  padding: "1rem",
+};
+
+const glyphHeaderStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: "1rem",
+  flexWrap: "wrap",
+};
+
+const typeBadgeStyle = {
+  display: "inline-block",
+  color: "#d4af37",
+  border: "1px solid #d4af37",
+  borderRadius: "999px",
+  padding: "0.2rem 0.55rem",
+  fontSize: "0.75rem",
+  margin: "0.5rem 0 0",
+};
+
+const statusBadgeStyle = {
+  background: "#1f1f2b",
+  color: "#f5f5f5",
+  border: "1px solid #2f2f3d",
+  borderRadius: "999px",
+  padding: "0.3rem 0.65rem",
+  fontSize: "0.75rem",
+  fontWeight: "bold",
+};
+
+const smallButtonStyle = {
+  background: "#d4af37",
+  color: "#0b0b0f",
+  border: "none",
+  borderRadius: "8px",
+  padding: "0.5rem 0.75rem",
+  fontWeight: "bold",
+  cursor: "pointer",
 };
 
 export async function getServerSideProps(context) {
